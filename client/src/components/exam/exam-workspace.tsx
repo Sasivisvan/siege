@@ -339,7 +339,7 @@ export function ExamWorkspace({ examId }: ExamWorkspaceProps) {
               />
               <canvas 
                 ref={proctoring.canvasRef}
-                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', transform: 'scaleX(-1)' }}
+                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
               />
             </div>
             <p>Fullscreen: {proctoring.isFullscreen ? '✅ active' : '⚠️ inactive'}</p>

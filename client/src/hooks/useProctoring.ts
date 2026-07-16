@@ -27,7 +27,7 @@ async function loadModels() {
     const tf = await import('@tensorflow/tfjs');
     
     const MODEL_URL = '/models';
-    await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+    await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
     await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
     
     await tf.ready();
@@ -215,50 +215,59 @@ export function useProctoring({ sessionId, hmacSecret, enabled }: UseProctoringO
       // If AI models aren't loaded yet, just draw the webcam feed so the user doesn't see a black box
       if (!modelsLoaded || !faceapi) {
         if (canvas) {
-          if (canvas.width !== canvasWidth || canvas.height !== canvasHeight) {
-            canvas.width = canvasWidth;
-            canvas.height = canvasHeight;
-          }
+          const displaySize = { width: canvasWidth, height: canvasHeight };
+          faceapi.matchDimensions(canvas, displaySize);
           const ctx = canvas.getContext('2d');
           if (ctx) {
-            ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+            ctx.save();
+            ctx.translate(canvasWidth, 0);
+            ctx.scale(-1, 1);
+            ctx.filter = 'brightness(1.35) contrast(1.25)';
             ctx.drawImage(video, 0, 0, canvasWidth, canvasHeight);
+            ctx.restore();
           }
         }
         return;
       }
 
       try {
-        // 1. Run AI detections asynchronously first
+        // Draw mirrored and contrast-enhanced webcam frame to canvas first
+        // This ensures the AI model runs on a brightened frame, drastically improving low-light accuracy!
+        if (canvas) {
+          const displaySize = { width: canvasWidth, height: canvasHeight };
+          faceapi.matchDimensions(canvas, displaySize);
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.save();
+            ctx.translate(canvasWidth, 0);
+            ctx.scale(-1, 1);
+            ctx.filter = 'brightness(1.35) contrast(1.25)';
+            ctx.drawImage(video, 0, 0, canvasWidth, canvasHeight);
+            ctx.restore();
+          }
+        }
+
+        // 1. Run face detection on the mirrored, enhanced canvas frame (SsdMobilenetv1)
         const detections = await faceapi.detectAllFaces(
-          video,
-          new faceapi.TinyFaceDetectorOptions()
+          canvas
         ).withFaceLandmarks();
 
         let phoneCount = 0;
         let phones: any[] = [];
         if (cocoSsdModel) {
+          // Detect phones on the video
           const predictions = await cocoSsdModel.detect(video);
           phones = predictions.filter((p: any) => p.class === 'cell phone');
           phoneCount = phones.length;
         }
 
-        // 2. Draw everything in a single synchronous pass to prevent flickering!
+        // 2. Draw overlays in a single synchronous pass
         if (canvas) {
-          if (canvas.width !== canvasWidth || canvas.height !== canvasHeight) {
-            canvas.width = canvasWidth;
-            canvas.height = canvasHeight;
-          }
+          const displaySize = { width: canvasWidth, height: canvasHeight };
+          const resizedDetections = faceapi.resizeResults(detections, displaySize);
           const ctx = canvas.getContext('2d');
           if (ctx) {
-            // Draw webcam frame
-            ctx.clearRect(0, 0, canvasWidth, canvasHeight);
-            ctx.drawImage(video, 0, 0, canvasWidth, canvasHeight);
-
-            // Draw Face API overlays
-            const displaySize = { width: canvasWidth, height: canvasHeight };
-            faceapi.matchDimensions(canvas, displaySize);
-            const resizedDetections = faceapi.resizeResults(detections, displaySize);
+            // Draw face boxes & landmarks (already in mirrored space since we detected on mirrored canvas!)
             faceapi.draw.drawDetections(canvas, resizedDetections);
             faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
             
@@ -273,8 +282,12 @@ export function useProctoring({ sessionId, hmacSecret, enabled }: UseProctoringO
               const scaleY = canvas.height / video.videoHeight;
               phones.forEach((p: any) => {
                 const [x, y, w, h] = p.bbox;
-                ctx.strokeRect(x * scaleX, y * scaleY, w * scaleX, h * scaleY);
-                ctx.fillText(`Phone (${Math.round(p.score * 100)}%)`, x * scaleX + 4, (y * scaleY) > 15 ? (y * scaleY) - 4 : 15);
+                const scaledX = x * scaleX;
+                const scaledW = w * scaleX;
+                // Mirror the X coordinate to match the mirrored canvas
+                const drawX = canvasWidth - scaledX - scaledW;
+                ctx.strokeRect(drawX, y * scaleY, scaledW, h * scaleY);
+                ctx.fillText(`Phone (${Math.round(p.score * 100)}%)`, drawX + 4, (y * scaleY) > 15 ? (y * scaleY) - 4 : 15);
               });
             }
 
