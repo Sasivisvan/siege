@@ -50,6 +50,8 @@ interface ProctoringState {
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
   debugInfo: string;
   logs: string[];
+  facesCount: number;
+  phonesCount: number;
 }
 
 interface UseProctoringOptions {
@@ -69,6 +71,8 @@ export function useProctoring({ sessionId, hmacSecret, enabled }: UseProctoringO
   const [tabSwitchCount, setTabSwitchCount] = useState(0);
   const [debugInfo, setDebugInfo] = useState('Initializing proctoring...');
   const [logs, setLogs] = useState<string[]>([]);
+  const [facesCount, setFacesCount] = useState(0);
+  const [phonesCount, setPhonesCount] = useState(0);
 
   const addLog = useCallback((msg: string) => {
     console.log(`[Proctoring] ${msg}`);
@@ -293,6 +297,10 @@ export function useProctoring({ sessionId, hmacSecret, enabled }: UseProctoringO
           }
         }
 
+        // Update states for HTML display
+        setFacesCount(detections.length);
+        setPhonesCount(phoneCount);
+
         const facesDetected = detections.length;
         let isHeadAway = false;
 
@@ -454,5 +462,7 @@ export function useProctoring({ sessionId, hmacSecret, enabled }: UseProctoringO
     canvasRef,
     debugInfo,
     logs,
+    facesCount,
+    phonesCount,
   };
 }

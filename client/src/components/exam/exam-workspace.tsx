@@ -344,6 +344,8 @@ export function ExamWorkspace({ examId }: ExamWorkspaceProps) {
             </div>
             <p>Fullscreen: {proctoring.isFullscreen ? '✅ active' : '⚠️ inactive'}</p>
             <p>Tab switches: {proctoring.tabSwitchCount}</p>
+            <p>👥 Faces detected: <strong style={{ color: proctoring.facesCount === 1 ? '#00ff66' : '#ff3333' }}>{proctoring.facesCount}</strong></p>
+            <p>📱 Phones detected: <strong style={{ color: proctoring.phonesCount > 0 ? '#ff3333' : 'var(--muted)' }}>{proctoring.phonesCount}</strong></p>
             {proctoring.isLocked && (
               <p style={{ color: '#ffffff', fontWeight: 'bold', marginTop: 8 }}>🔒 Session locked by proctor</p>
             )}
