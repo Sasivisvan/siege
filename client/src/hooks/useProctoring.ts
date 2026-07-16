@@ -9,9 +9,25 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { enqueueTelemetry, flushTelemetry, sendHeartbeat } from '@/lib/telemetry';
+import * as faceapi from '@vladmandic/face-api';
 
 const TELEMETRY_FLUSH_INTERVAL = 10_000;  // 10 seconds
 const HEARTBEAT_INTERVAL = 30_000;         // 30 seconds
+
+// We can load models once globally so hot-reloads don't crash
+let modelsLoaded = false;
+async function loadModels() {
+  if (modelsLoaded) return;
+  try {
+    const MODEL_URL = '/models';
+    await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+    await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+    modelsLoaded = true;
+    console.log('[Proctoring] AI Models loaded successfully.');
+  } catch (err) {
+    console.error('[Proctoring] Failed to load AI models:', err);
+  }
+}
 
 interface ProctoringState {
   webcamReady: boolean;
@@ -47,7 +63,6 @@ export function useProctoring({ sessionId, hmacSecret, enabled }: UseProctoringO
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const workerRef = useRef<Worker | null>(null);
   const frameIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const flushTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const heartbeatTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -92,45 +107,58 @@ export function useProctoring({ sessionId, hmacSecret, enabled }: UseProctoringO
     }
 
     startWebcam();
+    loadModels();
 
-    // Setup Web Worker for ML
-    workerRef.current = new Worker(new URL('../workers/proctoring.worker.ts', import.meta.url));
-    
-    workerRef.current.onmessage = (e) => {
-      if (e.data.type === 'RESULT') {
-        const res = e.data.result;
-        
-        if (res.isMissing) {
+    // Frame capture loop (runs every 1 second)
+    frameIntervalRef.current = setInterval(async () => {
+      const video = videoRef.current;
+      if (!video || video.readyState < 2 || !modelsLoaded) return;
+
+      try {
+        const detections = await faceapi.detectAllFaces(
+          video,
+          new faceapi.TinyFaceDetectorOptions()
+        ).withFaceLandmarks();
+
+        const facesDetected = detections.length;
+        let isHeadAway = false;
+
+        if (facesDetected === 1) {
+          const landmarks = detections[0].landmarks;
+          const nose = landmarks.getNose()[0];
+          const leftEye = landmarks.getLeftEye()[0];
+          const rightEye = landmarks.getRightEye()[0];
+          
+          const eyeCenter = { x: (leftEye.x + rightEye.x) / 2, y: (leftEye.y + rightEye.y) / 2 };
+          const eyeDist = rightEye.x - leftEye.x;
+          
+          if (eyeDist > 0 && Math.abs(nose.x - eyeCenter.x) > eyeDist * 0.5) {
+            isHeadAway = true;
+          }
+        }
+
+        // Handle Missing Face
+        if (facesDetected === 0) {
           missingCountRef.current += 1;
-          if (missingCountRef.current === 10) { // 10 seconds missing
+          if (missingCountRef.current === 10) {
             emit('FACE_MISSING', { duration: 10 });
           }
         } else {
           missingCountRef.current = 0;
         }
 
-        if (res.isMultiple) {
+        // Handle Multiple Faces
+        if (facesDetected > 1) {
           multipleCountRef.current += 1;
-          if (multipleCountRef.current === 5) { // 5 seconds multiple faces
-            emit('MULTIPLE_FACES', { count: res.facesDetected });
+          if (multipleCountRef.current === 5) {
+            emit('MULTIPLE_FACES', { count: facesDetected });
           }
         } else {
           multipleCountRef.current = 0;
         }
-      }
-    };
 
-    // Frame capture loop
-    frameIntervalRef.current = setInterval(async () => {
-      const video = videoRef.current;
-      const worker = workerRef.current;
-      if (video && video.readyState >= 2 && worker) {
-        try {
-          const bitmap = await createImageBitmap(video);
-          worker.postMessage({ type: 'PROCESS_FRAME', bitmap }, [bitmap]);
-        } catch (e) {
-          // Ignore bitmap creation errors (e.g., if video gets hidden)
-        }
+      } catch (err) {
+        console.error('[Proctoring] Face detection error:', err);
       }
     }, 1000);
 
@@ -141,7 +169,6 @@ export function useProctoring({ sessionId, hmacSecret, enabled }: UseProctoringO
         streamRef.current = null;
       }
       if (frameIntervalRef.current) clearInterval(frameIntervalRef.current);
-      if (workerRef.current) workerRef.current.terminate();
     };
   }, [enabled]);
 
@@ -153,8 +180,14 @@ export function useProctoring({ sessionId, hmacSecret, enabled }: UseProctoringO
     function handleVisibilityChange() {
       if (document.hidden) {
         setTabSwitchCount((c) => c + 1);
-        emit('TAB_SWITCH', { direction: 'away' });
+        emit('TAB_SWITCH', { direction: 'away', type: 'visibility' });
       }
+    }
+
+    // Window focus lost (Alt+Tab)
+    function handleBlur() {
+      setTabSwitchCount((c) => c + 1);
+      emit('TAB_SWITCH', { direction: 'away', type: 'blur' });
     }
 
     // Fullscreen change
@@ -177,12 +210,14 @@ export function useProctoring({ sessionId, hmacSecret, enabled }: UseProctoringO
     }
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('blur', handleBlur);
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     document.addEventListener('copy', handleCopy);
     document.addEventListener('paste', handlePaste);
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('blur', handleBlur);
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
       document.removeEventListener('copy', handleCopy);
       document.removeEventListener('paste', handlePaste);
