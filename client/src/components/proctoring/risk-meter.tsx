@@ -3,11 +3,11 @@ type RiskMeterProps = {
 };
 
 function getRiskColor(score: number): string {
-  if (score >= 90) return '#ef4444';
-  if (score >= 75) return '#f97316';
-  if (score >= 50) return '#f59e0b';
-  if (score >= 25) return '#eab308';
-  return '#22c55e';
+  if (score >= 90) return '#ffffff';
+  if (score >= 75) return '#d4d4d4';
+  if (score >= 50) return '#a3a3a3';
+  if (score >= 25) return '#737373';
+  return '#525252';
 }
 
 function getRiskLabel(score: number): string {

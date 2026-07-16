@@ -172,7 +172,7 @@ export function ExamWorkspace({ examId }: ExamWorkspaceProps) {
 
   if (proctoring.isLocked) {
     return (
-      <section className="card stack" style={{ textAlign: 'center', color: '#ef4444', marginTop: 40 }}>
+      <section className="card stack" style={{ textAlign: 'center', color: '#ffffff', marginTop: 40, border: '1px solid #ffffff' }}>
         <h2>🔒 Session Locked</h2>
         <p>Your session has been locked due to suspicious activity (e.g. disconnected heartbeat or leaving the page).</p>
         <p>Please contact your instructor.</p>
@@ -203,7 +203,7 @@ export function ExamWorkspace({ examId }: ExamWorkspaceProps) {
   return (
     <section className="workspace">
       {proctoring.tabSwitchCount > 0 && (
-        <div style={{ background: '#ef4444', color: 'white', padding: '12px 16px', borderRadius: 8, marginBottom: 16, fontWeight: 'bold' }}>
+        <div style={{ background: '#ffffff', color: '#000000', padding: '12px 16px', borderRadius: 8, marginBottom: 16, fontWeight: 'bold' }}>
           ⚠️ Warning: You have switched tabs {proctoring.tabSwitchCount} time(s). Continuing to leave the exam window will result in your session being locked.
         </div>
       )}
@@ -214,7 +214,8 @@ export function ExamWorkspace({ examId }: ExamWorkspaceProps) {
         <span style={{
           fontFamily: 'monospace',
           fontSize: '1.2rem',
-          color: timeLeft !== null && timeLeft < 300 ? '#ef4444' : 'var(--accent)',
+          color: timeLeft !== null && timeLeft < 300 ? '#ffffff' : 'var(--muted)',
+          fontWeight: timeLeft !== null && timeLeft < 300 ? 'bold' : 'normal',
         }}>
           ⏱ {timeLeft !== null ? formatTime(timeLeft) : '--:--'}
         </span>
@@ -250,8 +251,8 @@ export function ExamWorkspace({ examId }: ExamWorkspaceProps) {
                 <label key={i} className="option-label" style={{
                   display: 'flex', gap: 12, alignItems: 'center', padding: '12px 16px',
                   borderRadius: 12, cursor: 'pointer',
-                  background: answers[questionId] === i ? 'rgba(56, 189, 248, 0.15)' : 'transparent',
-                  border: `1px solid ${answers[questionId] === i ? 'var(--accent)' : 'var(--panel-border)'}`,
+                  background: answers[questionId] === i ? 'rgba(255, 255, 255, 0.15)' : 'transparent',
+                  border: `1px solid ${answers[questionId] === i ? 'var(--text)' : 'var(--panel-border)'}`,
                 }}>
                   <input
                     type="radio"
@@ -319,7 +320,7 @@ export function ExamWorkspace({ examId }: ExamWorkspaceProps) {
             <p>Fullscreen: {proctoring.isFullscreen ? '✅ active' : '⚠️ inactive'}</p>
             <p>Tab switches: {proctoring.tabSwitchCount}</p>
             {proctoring.isLocked && (
-              <p style={{ color: '#ef4444', fontWeight: 'bold', marginTop: 8 }}>🔒 Session locked by proctor</p>
+              <p style={{ color: '#ffffff', fontWeight: 'bold', marginTop: 8 }}>🔒 Session locked by proctor</p>
             )}
           </article>
 
@@ -332,10 +333,11 @@ export function ExamWorkspace({ examId }: ExamWorkspaceProps) {
                   key={q.id}
                   onClick={() => setCurrentQ(i)}
                   style={{
-                    width: 36, height: 36, borderRadius: 8, border: 'none', cursor: 'pointer',
-                    fontSize: '0.85rem', fontWeight: 600,
-                    background: i === currentQ ? 'var(--accent-strong)' : answers[q.id] !== undefined ? 'rgba(56, 189, 248, 0.2)' : 'rgba(148, 163, 184, 0.12)',
-                    color: i === currentQ ? '#000' : 'var(--text)',
+                    width: 40, height: 40, borderRadius: 8, border: 'none', cursor: 'pointer',
+                    fontSize: '0.9rem', fontWeight: 600,
+                    background: i === currentQ ? '#ffffff' : answers[q.id] !== undefined ? 'rgba(255, 255, 255, 0.2)' : 'rgba(255, 255, 255, 0.05)',
+                    color: i === currentQ ? '#000000' : 'var(--text)',
+                    transition: 'background 0.2s',
                   }}
                 >
                   {i + 1}

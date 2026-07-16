@@ -3,7 +3,11 @@
 import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { AppShell } from '@/components/ui/app-shell';
-import { ExamWorkspace } from '@/components/exam/exam-workspace';
+import dynamic from 'next/dynamic';
+
+const ExamWorkspace = dynamic(() => import('@/components/exam/exam-workspace').then(mod => mod.ExamWorkspace), {
+  ssr: false,
+});
 
 function ExamContent() {
   const searchParams = useSearchParams();
