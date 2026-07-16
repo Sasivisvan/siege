@@ -76,13 +76,43 @@ export function AppShell({
             {renderNavLinks()}
           </div>
           <div>
-            <button 
-              onClick={logout} 
-              className="sidebar-link" 
-              style={{ width: "100%", background: "none", border: "none", textAlign: "left", cursor: "pointer" }}
-            >
-              <span>🚪</span> Sign Out
-            </button>
+            <div style={{ padding: '16px 0', borderTop: '1px solid var(--panel-border)', marginTop: '16px' }}>
+              {user && (
+                <div style={{ padding: '8px 16px', marginBottom: '12px', fontSize: '0.85rem', color: 'var(--muted)' }}>
+                  <div style={{ fontWeight: 600, color: 'var(--text)', marginBottom: '2px' }}>{user.name}</div>
+                  <div>{user.email}</div>
+                </div>
+              )}
+              <button 
+                id="sidebar-sign-out-btn"
+                onClick={logout} 
+                style={{
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  padding: '12px 16px',
+                  borderRadius: 'var(--radius-sm)',
+                  background: 'var(--danger-glow)',
+                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                  color: 'var(--danger)',
+                  fontSize: '0.95rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(239, 68, 68, 0.25)';
+                  e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.5)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'var(--danger-glow)';
+                  e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.3)';
+                }}
+              >
+                <span>🚪</span> Sign Out
+              </button>
+            </div>
           </div>
         </aside>
 

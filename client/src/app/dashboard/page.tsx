@@ -16,7 +16,7 @@ interface ClassroomSummary {
 }
 
 export default function DashboardPage() {
-  const { user, isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading, logout } = useAuth();
   const router = useRouter();
   
   const [classrooms, setClassrooms] = useState<ClassroomSummary[]>([]);
@@ -151,6 +151,23 @@ export default function DashboardPage() {
             ))}
           </div>
         )}
+
+        {/* Sign Out */}
+        <div style={{ marginTop: 40, paddingTop: 24, borderTop: '1px solid var(--panel-border)' }}>
+          <button
+            id="dashboard-sign-out-btn"
+            onClick={logout}
+            className="button"
+            style={{
+              background: 'var(--danger-glow)',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
+              color: 'var(--danger)',
+              fontWeight: 600,
+            }}
+          >
+            🚪 Sign Out
+          </button>
+        </div>
       </AppShell>
     );
   }
@@ -203,6 +220,23 @@ export default function DashboardPage() {
           ))}
         </div>
       )}
+
+      {/* Sign Out */}
+      <div style={{ marginTop: 40, paddingTop: 24, borderTop: '1px solid var(--panel-border)' }}>
+        <button
+          id="teacher-dashboard-sign-out-btn"
+          onClick={logout}
+          className="button"
+          style={{
+            background: 'var(--danger-glow)',
+            border: '1px solid rgba(239, 68, 68, 0.3)',
+            color: 'var(--danger)',
+            fontWeight: 600,
+          }}
+        >
+          🚪 Sign Out
+        </button>
+      </div>
     </AppShell>
   );
 }
