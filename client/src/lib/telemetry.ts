@@ -1,24 +1,83 @@
-import { TELEMETRY_BATCH_INTERVAL_MS } from "@shared/constants";
-import type { TelemetryEvent, TelemetryBatch } from "@shared/types";
-import { apiFetch } from "@/lib/api";
+// ============================================
+// SIEGE Client — Telemetry Pipeline
+// ============================================
+// Queues proctoring events and flushes them
+// to the server in HMAC-signed batches.
+// ============================================
+
+import { signPayload } from '@/lib/hmac';
+import { apiFetch } from '@/lib/api';
+
+// --- Event Queue ---
+
+interface TelemetryEvent {
+  eventType: string;
+  timestamp: number;
+  metadata: Record<string, unknown>;
+  questionIndex?: number;
+}
 
 const queue: TelemetryEvent[] = [];
 
+/**
+ * Add a telemetry event to the queue.
+ * Events are batched and sent periodically.
+ */
 export function enqueueTelemetry(event: TelemetryEvent) {
   queue.push(event);
 }
 
-export async function flushTelemetry(sessionId: string) {
-  const batch: TelemetryBatch = { sessionId, events: queue.splice(0) };
+/**
+ * Flush all queued events to the server with HMAC signing.
+ *
+ * @param sessionId - Current exam session ID
+ * @param hmacSecret - Per-session HMAC secret (received from /exams/:id/start)
+ * @returns Server response with received count and risk score
+ */
+export async function flushTelemetry(
+  sessionId: string,
+  hmacSecret: string
+): Promise<{ received: number; sessionRisk: number } | null> {
+  const events = queue.splice(0);
 
-  if (!batch.events.length) {
+  if (events.length === 0) {
     return null;
   }
 
-  return apiFetch("/api/telemetry", {
-    method: "POST",
-    body: JSON.stringify(batch),
+  const body = { sessionId, events };
+  const bodyStr = JSON.stringify(body);
+
+  // Sign with HMAC-SHA256 (must match server's verification)
+  const signature = await signPayload(bodyStr, hmacSecret);
+
+  const res = await apiFetch<{
+    success: boolean;
+    data: { received: number; sessionRisk: number };
+  }>('/api/telemetry', {
+    method: 'POST',
+    body: bodyStr,
+    headers: {
+      'x-hmac-signature': signature,
+    },
   });
+
+  return res.data;
 }
 
-export const telemetryBatchIntervalMs = TELEMETRY_BATCH_INTERVAL_MS;
+/**
+ * Send a heartbeat to keep the session alive.
+ */
+export async function sendHeartbeat(sessionId: string): Promise<{
+  status: string;
+  examLocked: boolean;
+}> {
+  const res = await apiFetch<{
+    success: boolean;
+    data: { status: string; examLocked: boolean };
+  }>('/api/telemetry/heartbeat', {
+    method: 'POST',
+    body: JSON.stringify({ sessionId }),
+  });
+
+  return res.data;
+}

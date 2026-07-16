@@ -49,6 +49,8 @@ const telemetryEventSchema = new Schema<ITelemetryEventDocument>(
         'FULLSCREEN_EXIT',
         'API_MANIPULATION',
         'HEARTBEAT_TIMEOUT',
+        'PHONE_DETECTED',
+        'HEAD_AWAY',
       ],
       required: true,
     },

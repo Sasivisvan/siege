@@ -86,7 +86,10 @@ export type TelemetryEventType =
   | 'HEARTBEAT'
   | 'LIVENESS_FAIL'
   | 'FULLSCREEN_EXIT'
-  | 'API_MANIPULATION';
+  | 'API_MANIPULATION'
+  | 'HEARTBEAT_TIMEOUT'
+  | 'PHONE_DETECTED'
+  | 'HEAD_AWAY';
 
 export interface TelemetryEvent {
   sessionId: string;

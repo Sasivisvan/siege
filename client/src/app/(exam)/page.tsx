@@ -1,14 +1,23 @@
-import { AppShell } from "@/components/ui/app-shell";
-import { ExamWorkspace } from "@/components/exam/exam-workspace";
+"use client";
+
+import { useSearchParams } from 'next/navigation';
+import { AppShell } from '@/components/ui/app-shell';
+import { ExamWorkspace } from '@/components/exam/exam-workspace';
 
 export default function ExamPage() {
-  return (
-    <AppShell
-      eyebrow="Exam"
-      title="Candidate workspace"
-      description="A focused layout for answering questions and monitoring session health."
-    >
-      <ExamWorkspace />
-    </AppShell>
-  );
+  const searchParams = useSearchParams();
+  const examId = searchParams.get('id');
+
+  if (!examId) {
+    return (
+      <AppShell
+        eyebrow="Exam"
+        title="No exam selected"
+        description="Please select an exam from the dashboard to begin."
+        primaryCta={{ label: "Go to Dashboard", href: "/dashboard" }}
+      />
+    );
+  }
+
+  return <ExamWorkspace examId={examId} />;
 }

@@ -1,9 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
-    externalDir: true,
     typedRoutes: true,
   },
+  // Allow importing from ../shared/ which is outside the client/ directory
+  transpilePackages: ['shared'],
 };
 
 export default nextConfig;

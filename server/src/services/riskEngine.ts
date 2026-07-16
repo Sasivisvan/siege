@@ -5,6 +5,7 @@
 // NEVER trusts the frontend's math.
 // ============================================
 
+import mongoose from 'mongoose';
 import { TelemetryEvent } from '../models/TelemetryEvent.js';
 import { Session } from '../models/Session.js';
 import { RISK_WEIGHTS, RISK_THRESHOLDS } from '../types/index.js';
@@ -22,7 +23,7 @@ export async function recalculateSessionRisk(
 ): Promise<RiskScore> {
   // Aggregate all events by type using MongoDB pipeline
   const aggregation = await TelemetryEvent.aggregate([
-    { $match: { sessionId: { $eq: sessionId } } },
+    { $match: { sessionId: new mongoose.Types.ObjectId(sessionId) } },
     {
       $group: {
         _id: '$eventType',
@@ -129,4 +130,6 @@ const EVENT_LABELS: Record<string, string> = {
   FULLSCREEN_EXIT: 'Fullscreen exited',
   API_MANIPULATION: 'API manipulation detected',
   HEARTBEAT_TIMEOUT: 'Heartbeat timeout',
+  PHONE_DETECTED: 'Phone detected on camera',
+  HEAD_AWAY: 'Looking away from screen',
 };

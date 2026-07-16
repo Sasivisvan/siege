@@ -13,6 +13,9 @@ export const EVENT_TYPES = {
   LIVENESS_FAIL: 'LIVENESS_FAIL',
   FULLSCREEN_EXIT: 'FULLSCREEN_EXIT',
   API_MANIPULATION: 'API_MANIPULATION',
+  HEARTBEAT_TIMEOUT: 'HEARTBEAT_TIMEOUT',
+  PHONE_DETECTED: 'PHONE_DETECTED',
+  HEAD_AWAY: 'HEAD_AWAY',
 } as const;
 
 // --- Risk Weights ---
@@ -26,6 +29,8 @@ export const RISK_WEIGHTS = {
   LIVENESS_FAIL:    { perEvent: 40, cap: 40 },
   FULLSCREEN_EXIT:  { perEvent: 15, cap: 45 },
   API_MANIPULATION: { perEvent: 100, cap: 100 },
+  PHONE_DETECTED:   { perEvent: 80, cap: 100 },
+  HEAD_AWAY:        { perEvent: 30, cap: 60 },
 } as const;
 
 // --- Thresholds ---
