@@ -11,6 +11,7 @@ import { asyncHandler, AppError } from '../middleware/errorHandler.js';
 import { startExamSession, submitExamSession } from '../services/examService.js';
 import { checkPlagiarism } from '../services/plagiarism.js';
 import { Submission } from '../models/Submission.js';
+import { Classroom } from '../models/Classroom.js';
 import type { AuthenticatedRequest } from '../types/index.js';
 
 const router = Router();
@@ -36,10 +37,26 @@ router.post(
     body('questions.*.points').isInt({ min: 1 }).withMessage('Points must be at least 1'),
   ]),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    const { classroomId, ...examData } = req.body;
+
+    // Optional: if a classroomId is provided, verify the user owns it
+    let classroom = null;
+    if (classroomId) {
+      classroom = await Classroom.findOne({ _id: classroomId, teacher: req.user!.userId });
+      if (!classroom) {
+        throw new AppError('Classroom not found or unauthorized', 404);
+      }
+    }
+
     const exam = await Exam.create({
-      ...req.body,
+      ...examData,
       createdBy: req.user!.userId,
     });
+
+    if (classroom) {
+      classroom.exams.push(exam._id as any);
+      await classroom.save();
+    }
 
     res.status(201).json({
       success: true,

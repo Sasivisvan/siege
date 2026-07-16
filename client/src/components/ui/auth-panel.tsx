@@ -77,9 +77,9 @@ export function AuthPanel({ mode }: AuthPanelProps) {
       {mode === "register" && (
         <label className="stack">
           <span>Role</span>
-          <select value={role} onChange={(e) => setRole(e.target.value)}>
-            <option value="candidate">Candidate</option>
-            <option value="recruiter">Recruiter</option>
+          <select required value={role} onChange={(e) => setRole(e.target.value)}>
+            <option value="candidate">Student (Take tests)</option>
+            <option value="recruiter">Teacher (Create tests & classrooms)</option>
           </select>
         </label>
       )}

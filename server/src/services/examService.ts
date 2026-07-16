@@ -36,30 +36,31 @@ export async function startExamSession(
     throw new AppError('Exam not found', 404);
   }
 
-  // Check if candidate already has an active session for this exam
-  const existingSession = await Session.findOne({
+  // Check if candidate already has a session for this exam
+  let session = await Session.findOne({
     examId,
     candidateId,
-    status: { $in: ['active', 'completed'] },
-  });
+  }).select('+hmacSecret');
 
-  if (existingSession) {
-    if (existingSession.status === 'active') {
-      throw new AppError('You already have an active session for this exam', 409);
+  if (session) {
+    if (session.status === 'active') {
+      // Resume the existing active session
+      // (Do not throw an error, we will just return the existing session data below)
+    } else {
+      throw new AppError(`You cannot start this exam because your session is ${session.status}`, 409);
     }
-    throw new AppError('You have already completed this exam', 409);
+  } else {
+    // Generate per-session HMAC secret
+    const hmacSecret = crypto.randomBytes(32).toString('hex');
+
+    // Create session
+    session = await Session.create({
+      examId,
+      candidateId,
+      hmacSecret,
+      lastHeartbeat: new Date(),
+    });
   }
-
-  // Generate per-session HMAC secret
-  const hmacSecret = crypto.randomBytes(32).toString('hex');
-
-  // Create session
-  const session = await Session.create({
-    examId,
-    candidateId,
-    hmacSecret,
-    lastHeartbeat: new Date(),
-  });
 
   // Prepare exam data for the candidate
   let questions = exam.questions.map((q) => {
@@ -92,7 +93,7 @@ export async function startExamSession(
 
   return {
     sessionId: session._id.toString(),
-    hmacSecret, // Sent to client ONCE, used for telemetry signing
+    hmacSecret: session.hmacSecret, // Send secret to client for telemetry signing
     exam: {
       id: exam._id,
       title: exam.title,
