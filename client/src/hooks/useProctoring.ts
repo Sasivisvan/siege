@@ -10,6 +10,8 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { enqueueTelemetry, flushTelemetry, sendHeartbeat } from '@/lib/telemetry';
 import { useKeystrokeAnalytics } from '@/hooks/useKeystrokeAnalytics';
+import fpPromise from '@fingerprintjs/fingerprintjs';
+
 
 const TELEMETRY_FLUSH_INTERVAL = 10_000;  // 10 seconds
 const HEARTBEAT_INTERVAL = 30_000;         // 30 seconds
@@ -76,12 +78,27 @@ export function useProctoring({ sessionId, hmacSecret, enabled }: UseProctoringO
   const missingCountRef = useRef(0);
   const multipleCountRef = useRef(0);
 
+  // Fingerprint
+  const visitorIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    async function loadFingerprint() {
+      try {
+        const fp = await fpPromise.load();
+        const result = await fp.get();
+        visitorIdRef.current = result.visitorId;
+      } catch (err) {
+        console.error('[Proctoring] Failed to load fingerprint:', err);
+      }
+    }
+    loadFingerprint();
+  }, []);
+
   // --- Emit Telemetry Event ---
   const emit = useCallback((eventType: string, metadata: Record<string, unknown> = {}) => {
     enqueueTelemetry({
       eventType,
       timestamp: Date.now(),
-      metadata,
+      metadata: { ...metadata, visitorId: visitorIdRef.current },
     });
   }, []);
 

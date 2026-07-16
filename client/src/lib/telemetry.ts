@@ -17,17 +17,26 @@ interface TelemetryEvent {
   questionIndex?: number;
 }
 
-// Use a globalThis-attached singleton to survive HMR re-instantiation
 const QUEUE_KEY = '__siege_telemetry_queue__';
 
 function getQueue(): TelemetryEvent[] {
-  if (typeof globalThis !== 'undefined') {
-    if (!(globalThis as any)[QUEUE_KEY]) {
-      (globalThis as any)[QUEUE_KEY] = [];
+  if (typeof window !== 'undefined') {
+    const stored = localStorage.getItem(QUEUE_KEY);
+    if (stored) {
+      try {
+        return JSON.parse(stored);
+      } catch (err) {
+        return [];
+      }
     }
-    return (globalThis as any)[QUEUE_KEY];
   }
   return [];
+}
+
+function saveQueue(queue: TelemetryEvent[]) {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(QUEUE_KEY, JSON.stringify(queue));
+  }
 }
 
 /**
@@ -35,7 +44,9 @@ function getQueue(): TelemetryEvent[] {
  * Events are batched and sent periodically.
  */
 export function enqueueTelemetry(event: TelemetryEvent) {
-  getQueue().push(event);
+  const queue = getQueue();
+  queue.push(event);
+  saveQueue(queue);
 }
 
 /**
@@ -49,30 +60,41 @@ export async function flushTelemetry(
   sessionId: string,
   hmacSecret: string
 ): Promise<{ received: number; sessionRisk: number } | null> {
-  const events = getQueue().splice(0);
+  const events = getQueue();
 
   if (events.length === 0) {
     return null;
   }
 
-  const body = { sessionId, events };
+  const eventsToSend = [...events];
+  const body = { sessionId, events: eventsToSend };
   const bodyStr = JSON.stringify(body);
 
   // Sign with HMAC-SHA256 (must match server's verification)
   const signature = await signPayload(bodyStr, hmacSecret);
 
-  const res = await apiFetch<{
-    success: boolean;
-    data: { received: number; sessionRisk: number };
-  }>('/api/telemetry', {
-    method: 'POST',
-    body: bodyStr,
-    headers: {
-      'x-hmac-signature': signature,
-    },
-  });
+  try {
+    const res = await apiFetch<{
+      success: boolean;
+      data: { received: number; sessionRisk: number };
+    }>('/api/telemetry', {
+      method: 'POST',
+      body: bodyStr,
+      headers: {
+        'x-hmac-signature': signature,
+      },
+    });
 
-  return res.data;
+    // Remove the successfully sent events from the queue
+    const currentQueue = getQueue();
+    currentQueue.splice(0, eventsToSend.length);
+    saveQueue(currentQueue);
+
+    return res.data;
+  } catch (err) {
+    console.error('[Telemetry] Flush failed, events retained in local storage.', err);
+    throw err;
+  }
 }
 
 /**
