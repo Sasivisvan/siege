@@ -13,6 +13,7 @@ import morgan from 'morgan';
 import { env } from './config/env.js';
 import { connectDB } from './config/db.js';
 import { globalErrorHandler, AppError } from './middleware/errorHandler.js';
+import { generalLimiter } from './middleware/rateLimiter.js';
 
 // Route imports (uncomment as phases are built)
 import authRoutes from './routes/auth.routes.js';
@@ -77,6 +78,8 @@ app.get('/api/health', (_req, res) => {
 // ============================================
 // API Routes
 // ============================================
+
+app.use('/api', generalLimiter);
 
 app.use('/api/auth', authRoutes);
 app.use('/api/exams', examRoutes);
