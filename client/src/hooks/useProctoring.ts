@@ -60,13 +60,6 @@ interface UseProctoringOptions {
 
 /**
  * Proctoring hook that monitors browser signals and sends telemetry.
- *
- * Usage:
- * ```
- * const { webcamReady, riskScore, isLocked } = useProctoring({
- *   sessionId, hmacSecret, enabled: true
- * });
- * ```
  */
 export function useProctoring({ sessionId, hmacSecret, enabled }: UseProctoringOptions): ProctoringState {
   const [webcamReady, setWebcamReady] = useState(false);
@@ -199,7 +192,36 @@ export function useProctoring({ sessionId, hmacSecret, enabled }: UseProctoringO
     frameIntervalRef.current = setInterval(async () => {
       const video = videoRef.current;
       const canvas = canvasRef.current;
-      if (!video || video.readyState < 2 || !modelsLoaded || !faceapi) return;
+
+      const canvasWidth = 320;
+      const canvasHeight = 240;
+
+      // Self-healing: if video element mounts late (e.g. after fullscreen is entered), assign stream
+      if (video && !video.srcObject && streamRef.current) {
+        addLog('Self-healing: videoRef is now mounted. Assigning stream...');
+        video.muted = true;
+        video.srcObject = streamRef.current;
+        video.play()
+          .then(() => addLog('Self-healing: Video playing successfully.'))
+          .catch(err => addLog(`Self-healing: Play failed: ${err.message || err}`));
+      }
+
+      if (!video || video.readyState < 2) return;
+
+      // Draw the video frame as a snapshot to the canvas first
+      if (canvas) {
+        if (canvas.width !== canvasWidth || canvas.height !== canvasHeight) {
+          canvas.width = canvasWidth;
+          canvas.height = canvasHeight;
+        }
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+          ctx.drawImage(video, 0, 0, canvasWidth, canvasHeight);
+        }
+      }
+
+      if (!modelsLoaded || !faceapi) return;
 
       try {
         const detections = await faceapi.detectAllFaces(
@@ -208,12 +230,12 @@ export function useProctoring({ sessionId, hmacSecret, enabled }: UseProctoringO
         ).withFaceLandmarks();
 
         if (canvas) {
-          const displaySize = { width: video.clientWidth, height: video.clientHeight };
+          const displaySize = { width: canvasWidth, height: canvasHeight };
           faceapi.matchDimensions(canvas, displaySize);
           const resizedDetections = faceapi.resizeResults(detections, displaySize);
           const ctx = canvas.getContext('2d');
           if (ctx) {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // Overlays drawn on top of the already drawn video frame
             faceapi.draw.drawDetections(canvas, resizedDetections);
             faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
             
@@ -292,7 +314,7 @@ export function useProctoring({ sessionId, hmacSecret, enabled }: UseProctoringO
       window.removeEventListener('click', playOnInteraction);
       window.removeEventListener('touchstart', playOnInteraction);
     };
-  }, [enabled]);
+  }, [enabled, sessionId, hmacSecret, emit, addLog]);
 
   // --- Browser Event Listeners ---
   useEffect(() => {
@@ -307,7 +329,6 @@ export function useProctoring({ sessionId, hmacSecret, enabled }: UseProctoringO
     }
 
     // Window focus lost (Alt+Tab) — only count if document is still visible
-    // (visibilitychange already handles the hidden case)
     function handleBlur() {
       if (!document.hidden) {
         setTabSwitchCount((c) => c + 1);
@@ -330,6 +351,7 @@ export function useProctoring({ sessionId, hmacSecret, enabled }: UseProctoringO
       emit('COPY_PASTE', { action: 'copy' });
     }
 
+    // Paste interception
     function handlePaste(e: ClipboardEvent) {
       e.preventDefault();
       emit('COPY_PASTE', { action: 'paste', textLength: e.clipboardData?.getData('text')?.length ?? 0 });

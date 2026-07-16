@@ -334,38 +334,13 @@ export function ExamWorkspace({ examId }: ExamWorkspaceProps) {
                 ref={proctoring.videoRef} 
                 autoPlay 
                 playsInline 
-                muted={true}
-                onLoadedMetadata={(e) => {
-                  e.currentTarget.muted = true;
-                  e.currentTarget.play().catch(console.warn);
-                }}
+                muted 
                 style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} 
               />
               <canvas 
                 ref={proctoring.canvasRef}
                 style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', transform: 'scaleX(-1)' }}
               />
-            </div>
-            <p style={{ fontSize: '0.8rem', color: 'var(--muted)', margin: '4px 0' }}>Status: {proctoring.debugInfo}</p>
-            <div style={{
-              background: '#0a0a0c',
-              border: '1px solid #222',
-              borderRadius: 6,
-              padding: '6px 10px',
-              fontFamily: 'monospace',
-              fontSize: '0.75rem',
-              color: '#39ff14',
-              height: 100,
-              overflowY: 'auto',
-              marginTop: 10,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 4
-            }}>
-              <span style={{ color: '#888', borderBottom: '1px solid #222', paddingBottom: 2, marginBottom: 2 }}>🔧 Live Diagnostic Logs</span>
-              {proctoring.logs.map((log, idx) => (
-                <div key={idx} style={{ wordBreak: 'break-all' }}>{log}</div>
-              ))}
             </div>
             <p>Fullscreen: {proctoring.isFullscreen ? '✅ active' : '⚠️ inactive'}</p>
             <p>Tab switches: {proctoring.tabSwitchCount}</p>
