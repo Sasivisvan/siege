@@ -17,14 +17,22 @@ const HEARTBEAT_INTERVAL = 30_000;         // 30 seconds
 // We can load models once globally so hot-reloads don't crash
 let modelsLoaded = false;
 let faceapi: any = null;
+let cocoSsdModel: any = null;
 
 async function loadModels() {
   if (modelsLoaded) return;
   try {
     faceapi = await import('@vladmandic/face-api');
+    const cocoSsd = await import('@tensorflow-models/coco-ssd');
+    const tf = await import('@tensorflow/tfjs');
+    
     const MODEL_URL = '/models';
     await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
     await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+    
+    await tf.ready();
+    cocoSsdModel = await cocoSsd.load({ base: 'lite_mobilenet_v2' });
+    
     modelsLoaded = true;
     console.log('[Proctoring] AI Models loaded successfully.');
   } catch (err) {
@@ -100,7 +108,7 @@ export function useProctoring({ sessionId, hmacSecret, enabled }: UseProctoringO
     async function startWebcam() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: 640, height: 480, facingMode: 'user' },
+          video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
         });
         if (cancelled) {
           stream.getTracks().forEach((t) => t.stop());
@@ -109,6 +117,7 @@ export function useProctoring({ sessionId, hmacSecret, enabled }: UseProctoringO
         streamRef.current = stream;
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
+          videoRef.current.play().catch(err => console.warn('[Proctoring] Video play failed', err));
         }
         setWebcamReady(true);
       } catch (err) {
@@ -137,9 +146,31 @@ export function useProctoring({ sessionId, hmacSecret, enabled }: UseProctoringO
           faceapi.matchDimensions(canvas, displaySize);
           const resizedDetections = faceapi.resizeResults(detections, displaySize);
           const ctx = canvas.getContext('2d');
-          ctx?.clearRect(0, 0, canvas.width, canvas.height);
-          faceapi.draw.drawDetections(canvas, resizedDetections);
-          faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
+          if (ctx) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            faceapi.draw.drawDetections(canvas, resizedDetections);
+            faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
+            
+            if (cocoSsdModel) {
+              const predictions = await cocoSsdModel.detect(video);
+              const phones = predictions.filter((p: any) => p.class === 'cell phone');
+              if (phones.length > 0) {
+                emit('PHONE_DETECTED', { count: phones.length, confidence: phones[0].score });
+                
+                ctx.strokeStyle = '#ff0000';
+                ctx.lineWidth = 4;
+                ctx.fillStyle = '#ff0000';
+                ctx.font = '16px Arial';
+                const scaleX = canvas.width / video.videoWidth;
+                const scaleY = canvas.height / video.videoHeight;
+                phones.forEach((p: any) => {
+                  const [x, y, w, h] = p.bbox;
+                  ctx.strokeRect(x * scaleX, y * scaleY, w * scaleX, h * scaleY);
+                  ctx.fillText(`Phone (${Math.round(p.score * 100)}%)`, x * scaleX, (y * scaleY) > 20 ? (y * scaleY) - 5 : 20);
+                });
+              }
+            }
+          }
         }
 
         const facesDetected = detections.length;
