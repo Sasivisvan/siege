@@ -1,0 +1,21 @@
+# SIEGE — CODEOWNERS
+# Each line maps a file pattern to the responsible developer(s).
+# These developers will be auto-requested for PR reviews.
+#
+# Replace @dev1, @dev2, @dev3 with actual GitHub usernames.
+
+# --- Module Ownership ---
+/client/           @dev2
+/server/           @dev1
+/ai/               @dev3
+
+# --- Shared types require multi-dev review ---
+/shared/           @dev1 @dev2 @dev3
+
+# --- Docs —--
+/docs/             @dev1 @dev2 @dev3
+
+# --- Root configs ---
+/.github/          @dev1
+.gitignore         @dev1
+.env.example       @dev1 @dev2
