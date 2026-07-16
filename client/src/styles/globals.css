@@ -2,19 +2,20 @@
 
 :root {
   color-scheme: dark;
-  --bg: #000000;
-  --panel: #000000;
-  --panel-border: #ffffff;
+  --bg: #121214;
+  --panel: #1b1b1f;
+  --panel-border: #2a2a30;
   --text: #ffffff;
-  --muted: #b0b0b0;
+  --muted: #a0a0b0;
   --accent: #ffffff;
   --accent-strong: #ffffff;
   --shadow: none;
-  --danger: #ffffff;
-  --danger-glow: rgba(255, 255, 255, 0.1);
-  --bg-core: #000000;
-  --panel-glass: #000000;
-  --panel-solid: #000000;
+  --danger: #ef4444;
+  --danger-glow: rgba(239, 68, 68, 0.1);
+  --bg-core: #121214;
+  --bg-gradient: linear-gradient(135deg, #121214 0%, #1a1a1e 100%);
+  --panel-glass: rgba(27, 27, 31, 0.8);
+  --panel-solid: #1b1b1f;
   --accent-dim: rgba(255, 255, 255, 0.5);
   --accent-glow: rgba(255, 255, 255, 0.1);
 }
@@ -51,7 +52,7 @@ select {
   padding: 14px 18px;
   border-radius: 8px;
   border: 1px solid var(--panel-border);
-  background: #000000;
+  background: #121214;
   color: var(--text);
   outline: none;
   transition: all 0.2s ease;
@@ -105,7 +106,7 @@ textarea {
 .error-banner {
   padding: 14px 18px;
   border-radius: 8px;
-  background: #000000;
+  background: #1b1b1f;
   border: 1px solid var(--panel-border);
   color: var(--text);
   font-size: 0.9rem;
