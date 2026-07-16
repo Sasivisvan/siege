@@ -21,7 +21,7 @@ const questionSchema = new Schema(
   {
     type: {
       type: String,
-      enum: ['coding', 'mcq', 'aptitude'],
+      enum: ['coding', 'mcq', 'aptitude', 'theoretical'],
       required: true,
     },
     title: { type: String, required: true, trim: true },
@@ -31,6 +31,7 @@ const questionSchema = new Schema(
     options: [{ type: String }],          // For MCQ/aptitude
     correctOption: { type: Number },       // Index of correct option
     testCases: [testCaseSchema],           // For coding
+    rubric: { type: String },              // For theoretical questions (grading criteria)
     points: { type: Number, required: true, min: 1 },
     timeLimit: { type: Number },           // Per-question time limit (seconds)
   },
@@ -58,7 +59,7 @@ export interface IExamDocument extends Document {
   description: string;
   questions: Array<{
     _id: mongoose.Types.ObjectId;
-    type: string;
+    type: 'coding' | 'mcq' | 'aptitude' | 'theoretical';
     title: string;
     description: string;
     topic?: string;
@@ -70,6 +71,7 @@ export interface IExamDocument extends Document {
       expectedOutput: string;
       isHidden: boolean;
     }>;
+    rubric?: string;
     points: number;
     timeLimit?: number;
   }>;
@@ -83,6 +85,10 @@ export interface IExamDocument extends Document {
     randomizeQuestions: boolean;
     showRiskToCandidate: boolean;
   };
+  scheduledStart?: Date;
+  scheduledEnd?: Date;
+  isPublished: boolean;
+  attachments: mongoose.Types.ObjectId[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -119,6 +125,22 @@ const examSchema = new Schema<IExamDocument>(
       type: examSettingsSchema,
       default: () => ({}),
     },
+    scheduledStart: {
+      type: Date,
+    },
+    scheduledEnd: {
+      type: Date,
+    },
+    isPublished: {
+      type: Boolean,
+      default: false,
+    },
+    attachments: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: 'Document',
+      },
+    ],
   },
   {
     timestamps: true,

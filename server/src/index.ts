@@ -24,6 +24,8 @@ import sessionRoutes from './routes/session.routes.js';
 import analyticsRoutes from './routes/analytics.routes.js';
 import classroomRoutes from './routes/classroom.routes.js';
 import profileRoutes from './routes/profile.routes.js';
+import documentRoutes from './routes/document.routes.js';
+import path from 'path';
 
 // Services
 import { startHeartbeatMonitor } from './services/heartbeat.js';
@@ -68,6 +70,9 @@ if (!env.IS_PRODUCTION) {
   app.use(morgan('combined'));
 }
 
+// Static Files — Serve uploads
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+
 // ============================================
 // Health Check
 // ============================================
@@ -95,6 +100,7 @@ app.use('/api/sessions', sessionRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/classrooms', classroomRoutes);
 app.use('/api/profile', profileRoutes);
+app.use('/api/documents', documentRoutes);
 
 // ============================================
 // 404 Handler (must be after all routes)

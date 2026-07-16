@@ -12,7 +12,7 @@ import { apiFetch } from '@/lib/api';
 
 interface Question {
   id: string;
-  type: 'coding' | 'mcq' | 'aptitude';
+  type: 'coding' | 'mcq' | 'aptitude' | 'theoretical';
   title: string;
   description: string;
   options?: string[];
@@ -32,6 +32,7 @@ interface ExamData {
     copyPasteBlocked: boolean;
     tabSwitchLimit: number;
   };
+  attachments?: Array<{ id: string, title: string, fileUrl: string }>;
 }
 
 interface ExamWorkspaceProps {
@@ -240,9 +241,29 @@ export function ExamWorkspace({ examId }: ExamWorkspaceProps) {
                 setAnswers((prev) => ({ ...prev, [questionId]: val }));
               }}
               onBlur={() => saveAnswer(questionId, answers[questionId] ?? '')}
-              placeholder="Write your solution here..."
-              style={{ fontFamily: 'monospace', fontSize: '0.9rem' }}
+              placeholder="Write your code solution here..."
+              style={{ fontFamily: 'monospace', fontSize: '0.9rem', width: '100%', padding: '12px', borderRadius: 'var(--radius-sm)', background: '#1a1d21', color: 'var(--text)', border: '1px solid var(--panel-border)' }}
             />
+          )}
+
+          {question.type === 'theoretical' && (
+            <div className="stack">
+              <textarea
+                rows={12}
+                value={(answers[questionId] as string) ?? ''}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setAnswers((prev) => ({ ...prev, [questionId]: val }));
+                }}
+                onBlur={() => saveAnswer(questionId, answers[questionId] ?? '')}
+                placeholder="Write your essay answer here. Formatting will be preserved."
+                style={{ fontSize: '0.95rem', lineHeight: 1.6, width: '100%', padding: '16px', borderRadius: 'var(--radius-sm)', background: '#1a1d21', color: 'var(--text)', border: '1px solid var(--panel-border)' }}
+              />
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--muted)' }}>
+                <span>Autosaved</span>
+                <span>{((answers[questionId] as string) || '').split(/\s+/).filter(Boolean).length} words</span>
+              </div>
+            </div>
           )}
 
           {(question.type === 'mcq' || question.type === 'aptitude') && question.options && (
@@ -339,7 +360,7 @@ export function ExamWorkspace({ examId }: ExamWorkspaceProps) {
                   style={{
                     width: 40, height: 40, borderRadius: 8, border: 'none', cursor: 'pointer',
                     fontSize: '0.9rem', fontWeight: 600,
-                    background: i === currentQ ? '#ffffff' : answers[q.id] !== undefined ? 'rgba(255, 255, 255, 0.2)' : 'rgba(255, 255, 255, 0.05)',
+                    background: i === currentQ ? 'var(--accent)' : answers[q.id] !== undefined ? 'var(--accent-glow)' : 'rgba(255, 255, 255, 0.05)',
                     color: i === currentQ ? '#000000' : 'var(--text)',
                     transition: 'background 0.2s',
                   }}
@@ -349,6 +370,31 @@ export function ExamWorkspace({ examId }: ExamWorkspaceProps) {
               ))}
             </div>
           </article>
+
+          {/* Reference Materials */}
+          {exam.attachments && exam.attachments.length > 0 && (
+            <article className="card stack">
+              <h3>Reference Materials</h3>
+              <p style={{ fontSize: '0.85rem', color: 'var(--muted)', margin: 0 }}>Documents provided by the instructor for this exam.</p>
+              <div className="stack" style={{ gap: '8px', marginTop: '8px' }}>
+                {exam.attachments.map(att => (
+                  <a 
+                    key={att.id} 
+                    href={`/api/documents/${att.id}`} 
+                    target="_blank" 
+                    rel="noreferrer"
+                    style={{
+                      display: 'block', padding: '12px', background: 'var(--bg-core)', borderRadius: 'var(--radius-sm)',
+                      border: '1px solid var(--panel-border)', textDecoration: 'none', color: 'var(--accent)', fontWeight: 600,
+                      fontSize: '0.9rem'
+                    }}
+                  >
+                    📄 {att.title}
+                  </a>
+                ))}
+              </div>
+            </article>
+          )}
         </div>
       </div>
     </section>

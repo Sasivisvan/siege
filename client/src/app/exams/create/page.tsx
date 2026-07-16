@@ -3,6 +3,7 @@
 import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { AppShell } from '@/components/ui/app-shell';
+import { FileUpload } from '@/components/ui/file-upload';
 import { apiFetch } from '@/lib/api';
 
 function CreateExamForm() {
@@ -16,6 +17,12 @@ function CreateExamForm() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [duration, setDuration] = useState('60');
+
+  // Scheduling & Attachments
+  const [scheduledStart, setScheduledStart] = useState('');
+  const [scheduledEnd, setScheduledEnd] = useState('');
+  const [isPublished, setIsPublished] = useState(false);
+  const [attachments, setAttachments] = useState<Array<{id: string, title: string}>>([]);
 
   // Tabs: 'manual' | 'bulk-text' | 'excel' | 'ai'
   const [activeTab, setActiveTab] = useState<'manual' | 'bulk-text' | 'excel' | 'ai'>('manual');
@@ -210,6 +217,10 @@ function CreateExamForm() {
           title,
           description,
           duration: parseInt(duration, 10),
+          scheduledStart: scheduledStart ? new Date(scheduledStart).toISOString() : undefined,
+          scheduledEnd: scheduledEnd ? new Date(scheduledEnd).toISOString() : undefined,
+          isPublished,
+          attachments: attachments.map(a => a.id),
           questions: questions.map(q => ({
             ...q,
             points: typeof q.points === 'string' ? parseInt(q.points, 10) : q.points
@@ -241,6 +252,62 @@ function CreateExamForm() {
           <div className="field">
             <label>Duration (minutes)</label>
             <input type="number" required min="1" value={duration} onChange={e => setDuration(e.target.value)} />
+          </div>
+        </div>
+
+        <div className="card stack">
+          <h3>Scheduling & Advanced Options</h3>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="field">
+              <label>Scheduled Start Time (Optional)</label>
+              <input type="datetime-local" value={scheduledStart} onChange={e => setScheduledStart(e.target.value)} />
+            </div>
+            <div className="field">
+              <label>Scheduled End Time (Optional)</label>
+              <input type="datetime-local" value={scheduledEnd} onChange={e => setScheduledEnd(e.target.value)} />
+            </div>
+          </div>
+
+          <div className="field" style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '8px' }}>
+            <input 
+              type="checkbox" 
+              id="publish-toggle"
+              checked={isPublished} 
+              onChange={e => setIsPublished(e.target.checked)} 
+              style={{ width: '20px', height: '20px', accentColor: 'var(--accent)' }}
+            />
+            <label htmlFor="publish-toggle" style={{ margin: 0, fontWeight: 600, cursor: 'pointer' }}>Publish immediately</label>
+          </div>
+          <p style={{ fontSize: '0.8rem', color: 'var(--muted)', marginTop: '-8px', marginLeft: '32px' }}>
+            If unpublished, students cannot see or take this exam even if it's within the scheduled window.
+          </p>
+
+          <div className="field" style={{ marginTop: '16px' }}>
+            <label>Reference Attachments (Optional)</label>
+            <p style={{ fontSize: '0.8rem', color: 'var(--muted)', marginBottom: '12px' }}>
+              Upload documents (PDFs, images) that students can access during the exam.
+            </p>
+            <FileUpload 
+              onUploadSuccess={(id, meta) => {
+                setAttachments(prev => [...prev, { id, title: meta.title }]);
+              }} 
+            />
+            
+            {attachments.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '12px' }}>
+                {attachments.map(att => (
+                  <div key={att.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--bg-core)', padding: '6px 12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--panel-border)' }}>
+                    <span style={{ fontSize: '0.85rem' }}>📄 {att.title}</span>
+                    <button 
+                      type="button" 
+                      onClick={() => setAttachments(prev => prev.filter(a => a.id !== att.id))}
+                      style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer' }}
+                    >✕</button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -277,6 +344,7 @@ function CreateExamForm() {
                       <option value="mcq">Multiple Choice</option>
                       <option value="aptitude">Aptitude</option>
                       <option value="coding">Coding</option>
+                      <option value="theoretical">Theoretical (Essay)</option>
                     </select>
                   </div>
                   <div className="field">
@@ -298,7 +366,7 @@ function CreateExamForm() {
                   <textarea required value={q.description} onChange={e => updateQuestion(index, 'description', e.target.value)} placeholder="Provide the details of the problem..." rows={2}></textarea>
                 </div>
                 
-                {q.type !== 'coding' ? (
+                {q.type === 'mcq' || q.type === 'aptitude' ? (
                   <div className="field">
                     <label>Options</label>
                     <div style={{ display: 'grid', gap: '0.5rem' }}>
@@ -323,6 +391,18 @@ function CreateExamForm() {
                       ))}
                     </div>
                     <p style={{ fontSize: '0.8rem', color: 'var(--muted)', marginTop: '0.25rem' }}>Select the radio button next to the correct option.</p>
+                  </div>
+                ) : q.type === 'theoretical' ? (
+                  <div className="field">
+                    <label>Grading Rubric (AI Evaluator)</label>
+                    <textarea 
+                      value={q.rubric || ''} 
+                      onChange={e => updateQuestion(index, 'rubric', e.target.value)} 
+                      placeholder="e.g. Must mention X, Y, and Z. 5 points for each."
+                      rows={3}
+                      style={{ background: 'rgba(0,0,0,0.2)', border: '1px dashed var(--accent)' }}
+                    ></textarea>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--muted)', marginTop: '0.25rem' }}>This rubric guides the AI and human grader during evaluation.</p>
                   </div>
                 ) : (
                   <div className="field">

@@ -54,12 +54,26 @@ export function AppShell({
           <span>👤</span> Performance Profile
         </a>
         {user?.role !== "candidate" && (
-          <a 
-            href="/question-bank" 
-            className={`sidebar-link ${currentPath === "/question-bank" ? "active" : ""}`}
-          >
-            <span>📁</span> Question Bank
-          </a>
+          <>
+            <a 
+              href="/question-bank" 
+              className={`sidebar-link ${currentPath === "/question-bank" ? "active" : ""}`}
+            >
+              <span>📁</span> Question Bank
+            </a>
+            <a 
+              href="/dashboard/plagiarism" 
+              className={`sidebar-link ${currentPath === "/dashboard/plagiarism" ? "active" : ""}`}
+            >
+              <span>🛡️</span> Integrity Reports
+            </a>
+            <a 
+              href="/dashboard/review" 
+              className={`sidebar-link ${currentPath === "/dashboard/review" ? "active" : ""}`}
+            >
+              <span>📝</span> Review Queue
+            </a>
+          </>
         )}
       </nav>
     );

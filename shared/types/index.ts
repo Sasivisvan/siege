@@ -24,15 +24,18 @@ export interface AuthResponse {
 
 // --- Exam ---
 
-export type QuestionType = 'coding' | 'mcq' | 'aptitude';
+export type QuestionType = 'coding' | 'mcq' | 'aptitude' | 'theoretical';
 
 export interface Question {
   id: string;
   type: QuestionType;
   title: string;
   description: string;
+  topic?: string;
+  difficulty?: 'easy' | 'medium' | 'hard';
   options?: string[];          // For MCQ
   testCases?: TestCase[];      // For coding
+  rubric?: string;             // For theoretical
   points: number;
   timeLimit?: number;          // Per-question time limit (seconds)
 }
@@ -51,6 +54,10 @@ export interface Exam {
   duration: number;            // Total duration in minutes
   createdBy: string;
   settings: ExamSettings;
+  scheduledStart?: string;
+  scheduledEnd?: string;
+  isPublished: boolean;
+  attachments: string[];
   createdAt: string;
 }
 
