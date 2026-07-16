@@ -1,0 +1,426 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SIEGE MVP</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #07111f;
+        --bg2: #050b15;
+        --panel: rgba(13, 24, 42, 0.88);
+        --panel-soft: rgba(15, 23, 42, 0.7);
+        --border: rgba(148, 163, 184, 0.16);
+        --text: #e5eefc;
+        --muted: #94a3b8;
+        --accent: #7dd3fc;
+        --accent-strong: #38bdf8;
+        --good: #34d399;
+        --warn: #fbbf24;
+        --bad: #f87171;
+        --shadow: 0 24px 80px rgba(2, 6, 23, 0.4);
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; min-height: 100%; font-family: Inter, system-ui, sans-serif; background:
+        radial-gradient(circle at top left, rgba(56, 189, 248, 0.12), transparent 30%),
+        radial-gradient(circle at right, rgba(125, 211, 252, 0.08), transparent 24%),
+        linear-gradient(180deg, var(--bg) 0%, var(--bg2) 100%); color: var(--text); }
+      body { padding: 24px; }
+      a { color: inherit; text-decoration: none; }
+      button, input, textarea { font: inherit; }
+      .shell { max-width: 1280px; margin: 0 auto; display: grid; gap: 18px; }
+      .topbar {
+        display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; align-items: center;
+        padding: 18px 22px; border: 1px solid var(--border); border-radius: 22px; background: var(--panel);
+        box-shadow: var(--shadow); backdrop-filter: blur(16px);
+      }
+      .brand { display: flex; flex-direction: column; gap: 4px; }
+      .brand strong { font-size: 1.15rem; letter-spacing: 0.08em; text-transform: uppercase; }
+      .brand span, .muted { color: var(--muted); }
+      .pills, .actions, .tabs, .toolbar { display: flex; flex-wrap: wrap; gap: 10px; }
+      .pill, .chip, .tab, .btn {
+        border: 1px solid var(--border); border-radius: 999px; padding: 10px 14px; background: rgba(148,163,184,.08);
+        color: var(--text); cursor: pointer; transition: transform .15s ease, background .15s ease, border-color .15s ease;
+      }
+      .pill:hover, .chip:hover, .tab:hover, .btn:hover { transform: translateY(-1px); }
+      .pill.good { border-color: rgba(52,211,153,.35); color: var(--good); }
+      .pill.warn { border-color: rgba(251,191,36,.35); color: var(--warn); }
+      .pill.bad { border-color: rgba(248,113,113,.35); color: var(--bad); }
+      .tab.active { border-color: rgba(56,189,248,.45); background: linear-gradient(135deg, rgba(56,189,248,.25), rgba(37,99,235,.22)); }
+      .btn.primary { border-color: rgba(56,189,248,.5); background: linear-gradient(135deg, var(--accent-strong), #2563eb); }
+      .hero, .panel, .stat {
+        border: 1px solid var(--border); border-radius: 24px; background: var(--panel); box-shadow: var(--shadow); backdrop-filter: blur(18px);
+      }
+      .hero { padding: 28px; display: grid; gap: 18px; }
+      .eyebrow { color: var(--accent); text-transform: uppercase; letter-spacing: .18em; font-size: .78rem; }
+      .hero h1 { margin: 0; font-size: clamp(2.2rem, 4vw, 4.5rem); line-height: .96; max-width: 14ch; }
+      .hero p { margin: 0; max-width: 70ch; color: var(--muted); line-height: 1.7; font-size: 1.03rem; }
+      .grid { display: grid; gap: 16px; }
+      .grid.metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      .grid.main { grid-template-columns: minmax(0, 1.35fr) minmax(320px, .65fr); }
+      .stat { padding: 18px; }
+      .stat small { color: var(--muted); display: block; margin-bottom: 6px; }
+      .stat strong { font-size: 1.8rem; }
+      .panel { padding: 20px; }
+      .panel h2, .panel h3 { margin: 0 0 12px; }
+      .section { display: none; }
+      .section.active { display: grid; gap: 16px; }
+      .question { display: grid; gap: 14px; }
+      textarea, input {
+        width: 100%; border: 1px solid rgba(148,163,184,.18); background: rgba(2,6,23,.38); color: var(--text);
+        border-radius: 18px; padding: 14px; outline: none;
+      }
+      textarea { min-height: 350px; resize: vertical; line-height: 1.6; }
+      .cards { display: grid; gap: 12px; }
+      .cards.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .metric {
+        display: grid; gap: 8px; padding: 16px; border-radius: 18px; border: 1px solid rgba(148,163,184,.14); background: var(--panel-soft);
+      }
+      .metric .value { font-size: 1.55rem; font-weight: 700; }
+      .meter { width: 100%; height: 10px; border-radius: 999px; background: rgba(148,163,184,.12); overflow: hidden; }
+      .meter span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--accent), var(--accent-strong)); }
+      .timeline { display: grid; gap: 10px; max-height: 320px; overflow: auto; }
+      .event {
+        display: grid; gap: 4px; padding: 12px 14px; border-radius: 16px; background: rgba(148,163,184,.07); border: 1px solid rgba(148,163,184,.12);
+      }
+      .event strong { font-size: .96rem; }
+      .event span { color: var(--muted); font-size: .92rem; }
+      .grid.split { grid-template-columns: 1fr 1fr; }
+      .footer-note { color: var(--muted); font-size: .92rem; }
+      .risk-badge { display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 999px; border: 1px solid var(--border); }
+      .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--good); box-shadow: 0 0 0 4px rgba(52,211,153,.15); }
+      .dot.warn { background: var(--warn); box-shadow: 0 0 0 4px rgba(251,191,36,.15); }
+      .dot.bad { background: var(--bad); box-shadow: 0 0 0 4px rgba(248,113,113,.15); }
+      .stack { display: grid; gap: 16px; }
+      .auth-shell { max-width: 520px; }
+      .form { display: grid; gap: 12px; }
+      .link-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+      .kbd {
+        display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 8px; font-size: .85rem; border: 1px solid rgba(148,163,184,.18);
+        background: rgba(148,163,184,.07);
+      }
+      @media (max-width: 980px) {
+        .grid.metrics, .grid.main, .cards.two, .grid.split { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <header class="topbar">
+        <div class="brand">
+          <strong>SIEGE MVP</strong>
+          <span>Browser-first secure assessment demo</span>
+        </div>
+        <div class="pills">
+          <div class="pill good" id="statusLock">Fullscreen: simulated</div>
+          <div class="pill" id="statusCam">Webcam: ready</div>
+          <div class="pill warn" id="statusRisk">Risk: low</div>
+        </div>
+      </header>
+
+      <section class="hero">
+        <span class="eyebrow">Product MVP</span>
+        <h1>Test exams, proctoring, and reviewer flows in one browser page.</h1>
+        <p>
+          This standalone client MVP lets you inspect a candidate workspace, trigger proctoring events, review a dashboard,
+          and collect a working report without any backend setup.
+        </p>
+        <div class="actions">
+          <button class="btn primary" data-tab="exam">Open exam workspace</button>
+          <button class="btn" data-tab="dashboard">View dashboard</button>
+          <button class="btn" data-tab="auth">Show sign-in</button>
+          <button class="btn" id="resetAll">Reset demo state</button>
+        </div>
+      </section>
+
+      <section class="grid metrics">
+        <div class="stat">
+          <small>Session risk</small>
+          <strong id="riskScore">12</strong>
+        </div>
+        <div class="stat">
+          <small>Events captured</small>
+          <strong id="eventCount">3</strong>
+        </div>
+        <div class="stat">
+          <small>Timer remaining</small>
+          <strong id="timeLeft">00:45:00</strong>
+        </div>
+        <div class="stat">
+          <small>Mode</small>
+          <strong id="activeMode">Exam</strong>
+        </div>
+      </section>
+
+      <nav class="tabs">
+        <button class="tab active" data-tab="exam">Exam</button>
+        <button class="tab" data-tab="dashboard">Dashboard</button>
+        <button class="tab" data-tab="auth">Auth</button>
+      </nav>
+
+      <main class="grid main">
+        <section class="section active" id="exam">
+          <div class="panel question">
+            <div class="link-row">
+              <div class="risk-badge"><span class="dot" id="riskDot"></span><span id="riskLabel">Candidate in good standing</span></div>
+              <span class="kbd">Ctrl/Cmd + Shift + V</span>
+              <span class="kbd">Alt + Tab simulation</span>
+            </div>
+            <h2>Coding question</h2>
+            <p class="muted">Write a function that returns the longest common prefix for an array of strings.</p>
+            <textarea id="editor">function longestCommonPrefix(values) {
+  if (!values.length) return "";
+  const [first] = values;
+  return first;
+}</textarea>
+            <div class="toolbar">
+              <button class="btn primary" id="submitCode">Submit answer</button>
+              <button class="btn" id="simulatePaste">Simulate copy/paste</button>
+              <button class="btn" id="simulateTab">Simulate tab switch</button>
+              <button class="btn" id="simulateFace">Simulate face missing</button>
+            </div>
+          </div>
+          <div class="grid split">
+            <div class="panel stack">
+              <h3>Question navigation</h3>
+              <div class="cards two">
+                <div class="metric"><span>Q1</span><strong>Prefix</strong><small>coding</small></div>
+                <div class="metric"><span>Q2</span><strong>MCQ</strong><small>aptitude</small></div>
+                <div class="metric"><span>Q3</span><strong>Logic</strong><small>coding</small></div>
+                <div class="metric"><span>Q4</span><strong>Review</strong><small>submission</small></div>
+              </div>
+            </div>
+            <div class="panel stack">
+              <h3>Proctoring</h3>
+              <div class="cards">
+                <div class="metric">
+                  <span>Webcam status</span>
+                  <strong id="camState">Connected</strong>
+                </div>
+                <div class="metric">
+                  <span>Fullscreen status</span>
+                  <strong id="fsState">Simulated active</strong>
+                </div>
+                <div class="metric">
+                  <span>Attention alerts</span>
+                  <strong id="alertState">0 active</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <aside class="section" id="dashboard">
+          <div class="panel stack">
+            <h2>Reviewer dashboard</h2>
+            <div class="cards">
+              <div class="metric"><span>Active sessions</span><strong>18</strong></div>
+              <div class="metric"><span>Flagged attempts</span><strong>4</strong></div>
+              <div class="metric"><span>Average risk</span><strong>21.3</strong></div>
+            </div>
+            <div class="meter"><span id="riskBar" style="width: 12%;"></span></div>
+            <p class="footer-note">Use the simulation buttons to drive the timeline and watch the risk meter change.</p>
+          </div>
+
+          <div class="panel stack">
+            <h3>Event timeline</h3>
+            <div class="timeline" id="timeline"></div>
+          </div>
+        </aside>
+
+        <aside class="section" id="auth">
+          <div class="panel auth-shell stack">
+            <h2>Candidate login</h2>
+            <p class="muted">The MVP includes a simple auth surface for flow testing.</p>
+            <div class="form">
+              <label>
+                <span class="muted">Email</span>
+                <input type="email" id="email" value="candidate@siege.dev" />
+              </label>
+              <label>
+                <span class="muted">Password</span>
+                <input type="password" id="password" value="siege-demo" />
+              </label>
+              <button class="btn primary" id="signIn">Sign in</button>
+            </div>
+            <div class="metric">
+              <span>Signed in as</span>
+              <strong id="signedInUser">candidate@siege.dev</strong>
+            </div>
+          </div>
+        </aside>
+      </main>
+    </div>
+
+    <script>
+      const state = {
+        risk: 12,
+        alerts: 0,
+        mode: "Exam",
+        faceMissing: false,
+        fullscreen: true,
+        webcam: true,
+        timeLeft: 45 * 60,
+        events: [
+          { type: "HEARTBEAT", detail: "Session started and heartbeat acknowledged." },
+          { type: "WEBCAM", detail: "Webcam ready and permission granted." },
+          { type: "FOCUS", detail: "Browser focus confirmed." },
+        ],
+      };
+
+      const $ = (id) => document.getElementById(id);
+      const fmtTime = (seconds) => {
+        const h = String(Math.floor(seconds / 3600)).padStart(2, "0");
+        const m = String(Math.floor((seconds % 3600) / 60)).padStart(2, "0");
+        const s = String(seconds % 60).padStart(2, "0");
+        return `${h}:${m}:${s}`;
+      };
+      const storage = {
+        read(key) {
+          try {
+            return localStorage.getItem(key);
+          } catch {
+            return null;
+          }
+        },
+        write(key, value) {
+          try {
+            localStorage.setItem(key, value);
+          } catch {}
+        },
+        clear(key) {
+          try {
+            localStorage.removeItem(key);
+          } catch {}
+        },
+      };
+      const riskTone = () => {
+        if (state.risk >= 75) return { text: "Critical session risk", cls: "bad" };
+        if (state.risk >= 50) return { text: "Risk elevated", cls: "warn" };
+        return { text: "Candidate in good standing", cls: "good" };
+      };
+      const addEvent = (type, detail) => {
+        state.events.unshift({
+          type,
+          detail,
+          time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+        });
+        state.events = state.events.slice(0, 14);
+        render();
+      };
+      const setRisk = (value) => {
+        state.risk = Math.max(0, Math.min(100, value));
+      };
+      const renderTimeline = () => {
+        $("timeline").innerHTML = state.events
+          .map(
+            (event) => `
+              <div class="event">
+                <strong>${event.type}</strong>
+                <span>${event.detail}</span>
+                <span>${event.time ?? "now"}</span>
+              </div>`,
+          )
+          .join("");
+      };
+      const render = () => {
+        $("riskScore").textContent = state.risk;
+        $("eventCount").textContent = state.events.length;
+        $("timeLeft").textContent = fmtTime(state.timeLeft);
+        $("activeMode").textContent = state.mode;
+        $("riskBar").style.width = `${state.risk}%`;
+        $("statusRisk").textContent = `Risk: ${state.risk < 25 ? "low" : state.risk < 50 ? "moderate" : "high"}`;
+        $("statusRisk").className = `pill ${state.risk < 25 ? "good" : state.risk < 50 ? "warn" : "bad"}`;
+        $("statusLock").textContent = `Fullscreen: ${state.fullscreen ? "simulated" : "exited"}`;
+        $("statusCam").textContent = `Webcam: ${state.webcam ? "ready" : "missing"}`;
+        $("camState").textContent = state.webcam ? "Connected" : "Missing";
+        $("fsState").textContent = state.fullscreen ? "Simulated active" : "Exited";
+        $("alertState").textContent = `${state.alerts} active`;
+        const tone = riskTone();
+        $("riskLabel").textContent = tone.text;
+        $("riskDot").className = `dot ${tone.cls === "good" ? "" : tone.cls}`;
+        renderTimeline();
+        storage.write("siege-mvp-state", JSON.stringify(state));
+      };
+      const switchTab = (name) => {
+        document.querySelectorAll(".section").forEach((section) => section.classList.toggle("active", section.id === name));
+        document.querySelectorAll(".tab").forEach((tab) => tab.classList.toggle("active", tab.dataset.tab === name));
+        state.mode = name.charAt(0).toUpperCase() + name.slice(1);
+        render();
+      };
+      const restore = () => {
+        try {
+          const saved = JSON.parse(storage.read("siege-mvp-state"));
+          if (saved && typeof saved === "object") Object.assign(state, saved);
+        } catch {}
+      };
+
+      restore();
+      render();
+
+      document.querySelectorAll("[data-tab]").forEach((element) => {
+        element.addEventListener("click", () => switchTab(element.dataset.tab));
+      });
+
+      $("simulatePaste").addEventListener("click", () => {
+        state.alerts += 1;
+        setRisk(state.risk + 18);
+        addEvent("COPY_PASTE", "Copy/paste activity was detected in the editor.");
+      });
+
+      $("simulateTab").addEventListener("click", () => {
+        state.alerts += 1;
+        state.fullscreen = false;
+        setRisk(state.risk + 15);
+        addEvent("TAB_SWITCH", "User switched away from the assessment tab.");
+      });
+
+      $("simulateFace").addEventListener("click", () => {
+        state.webcam = false;
+        state.alerts += 1;
+        setRisk(state.risk + 24);
+        addEvent("FACE_MISSING", "Face detection lost track of the candidate.");
+      });
+
+      $("submitCode").addEventListener("click", () => {
+        addEvent("SUBMISSION", "Code answer submitted for review.");
+      });
+
+      $("signIn").addEventListener("click", () => {
+        $("signedInUser").textContent = $("email").value || "candidate@siege.dev";
+        addEvent("AUTH", `Signed in as ${$("signedInUser").textContent}.`);
+        switchTab("exam");
+      });
+
+      $("resetAll").addEventListener("click", () => {
+        storage.clear("siege-mvp-state");
+        Object.assign(state, {
+          risk: 12,
+          alerts: 0,
+          mode: "Exam",
+          faceMissing: false,
+          fullscreen: true,
+          webcam: true,
+          timeLeft: 45 * 60,
+          events: [
+            { type: "HEARTBEAT", detail: "Session started and heartbeat acknowledged." },
+            { type: "WEBCAM", detail: "Webcam ready and permission granted." },
+            { type: "FOCUS", detail: "Browser focus confirmed." },
+          ],
+        });
+        $("email").value = "candidate@siege.dev";
+        $("password").value = "siege-demo";
+        $("signedInUser").textContent = "candidate@siege.dev";
+        switchTab("exam");
+        render();
+      });
+
+      setInterval(() => {
+        state.timeLeft = Math.max(0, state.timeLeft - 1);
+        if (state.timeLeft === 0) addEvent("TIMEOUT", "Assessment timer reached zero.");
+        render();
+      }, 1000);
+    </script>
+  </body>
+</html>
