@@ -334,7 +334,8 @@ export function ExamWorkspace({ examId }: ExamWorkspaceProps) {
                 ref={proctoring.videoRef} 
                 autoPlay 
                 playsInline 
-                muted 
+                muted={true}
+                defaultMuted={true}
                 onLoadedMetadata={(e) => {
                   e.currentTarget.muted = true;
                   e.currentTarget.play().catch(console.warn);
@@ -346,6 +347,7 @@ export function ExamWorkspace({ examId }: ExamWorkspaceProps) {
                 style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', transform: 'scaleX(-1)' }}
               />
             </div>
+            <p style={{ fontSize: '0.8rem', color: 'var(--muted)', margin: '4px 0' }}>Status: {proctoring.debugInfo}</p>
             <p>Fullscreen: {proctoring.isFullscreen ? '✅ active' : '⚠️ inactive'}</p>
             <p>Tab switches: {proctoring.tabSwitchCount}</p>
             {proctoring.isLocked && (

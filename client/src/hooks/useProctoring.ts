@@ -48,6 +48,7 @@ interface ProctoringState {
   tabSwitchCount: number;
   videoRef: React.RefObject<HTMLVideoElement | null>;
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
+  debugInfo: string;
 }
 
 interface UseProctoringOptions {
@@ -72,6 +73,7 @@ export function useProctoring({ sessionId, hmacSecret, enabled }: UseProctoringO
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
   const [tabSwitchCount, setTabSwitchCount] = useState(0);
+  const [debugInfo, setDebugInfo] = useState('Initializing proctoring...');
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -107,6 +109,7 @@ export function useProctoring({ sessionId, hmacSecret, enabled }: UseProctoringO
 
     async function startWebcam() {
       try {
+        setDebugInfo('Requesting camera permissions...');
         let stream: MediaStream;
         try {
           stream = await navigator.mediaDevices.getUserMedia({
@@ -114,6 +117,7 @@ export function useProctoring({ sessionId, hmacSecret, enabled }: UseProctoringO
           });
         } catch (initialErr) {
           console.warn('[Proctoring] Ideal camera constraints failed, trying basic video...', initialErr);
+          setDebugInfo('Ideal camera failed, trying basic video...');
           stream = await navigator.mediaDevices.getUserMedia({ video: true });
         }
         
@@ -123,19 +127,46 @@ export function useProctoring({ sessionId, hmacSecret, enabled }: UseProctoringO
         }
         streamRef.current = stream;
         if (videoRef.current) {
+          setDebugInfo('Setting video source...');
           videoRef.current.muted = true;
           videoRef.current.srcObject = stream;
-          videoRef.current.play().catch(err => console.warn('[Proctoring] Video play failed', err));
+          videoRef.current.play()
+            .then(() => setDebugInfo('Webcam active & playing.'))
+            .catch(err => {
+              console.warn('[Proctoring] Video play failed', err);
+              setDebugInfo(`Play blocked: ${err.message || err}. Click page to start.`);
+            });
+        } else {
+          setDebugInfo('Video ref not ready yet.');
         }
         setWebcamReady(true);
-      } catch (err) {
+      } catch (err: any) {
         console.warn('[Proctoring] Webcam access completely denied:', err);
+        setDebugInfo(`Webcam error: ${err.message || err}`);
         setWebcamReady(false);
       }
     }
 
+    // Attempt to play video on any user interaction to bypass autoplay restrictions (e.g. Safari Low Power Mode)
+    function playOnInteraction() {
+      if (videoRef.current && videoRef.current.paused) {
+        videoRef.current.play()
+          .then(() => {
+            setDebugInfo('Webcam active (via interaction)');
+            window.removeEventListener('click', playOnInteraction);
+            window.removeEventListener('touchstart', playOnInteraction);
+          })
+          .catch(err => console.warn('[Proctoring] Interaction play failed', err));
+      }
+    }
+    window.addEventListener('click', playOnInteraction);
+    window.addEventListener('touchstart', playOnInteraction);
+
     startWebcam();
-    loadModels();
+    setDebugInfo('Loading AI models...');
+    loadModels().then(() => {
+      setDebugInfo('AI Models loaded. Monitoring...');
+    });
 
     // Frame capture loop (runs every 1 second)
     frameIntervalRef.current = setInterval(async () => {
@@ -231,6 +262,8 @@ export function useProctoring({ sessionId, hmacSecret, enabled }: UseProctoringO
         streamRef.current = null;
       }
       if (frameIntervalRef.current) clearInterval(frameIntervalRef.current);
+      window.removeEventListener('click', playOnInteraction);
+      window.removeEventListener('touchstart', playOnInteraction);
     };
   }, [enabled]);
 
@@ -338,5 +371,6 @@ export function useProctoring({ sessionId, hmacSecret, enabled }: UseProctoringO
     tabSwitchCount,
     videoRef,
     canvasRef,
+    debugInfo,
   };
 }
