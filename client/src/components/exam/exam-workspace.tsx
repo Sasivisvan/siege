@@ -335,7 +335,6 @@ export function ExamWorkspace({ examId }: ExamWorkspaceProps) {
                 autoPlay 
                 playsInline 
                 muted={true}
-                defaultMuted={true}
                 onLoadedMetadata={(e) => {
                   e.currentTarget.muted = true;
                   e.currentTarget.play().catch(console.warn);
