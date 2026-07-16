@@ -9,16 +9,18 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { enqueueTelemetry, flushTelemetry, sendHeartbeat } from '@/lib/telemetry';
-import * as faceapi from '@vladmandic/face-api';
 
 const TELEMETRY_FLUSH_INTERVAL = 10_000;  // 10 seconds
 const HEARTBEAT_INTERVAL = 30_000;         // 30 seconds
 
 // We can load models once globally so hot-reloads don't crash
 let modelsLoaded = false;
+let faceapi: any = null;
+
 async function loadModels() {
   if (modelsLoaded) return;
   try {
+    faceapi = await import('@vladmandic/face-api');
     const MODEL_URL = '/models';
     await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
     await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
@@ -112,7 +114,7 @@ export function useProctoring({ sessionId, hmacSecret, enabled }: UseProctoringO
     // Frame capture loop (runs every 1 second)
     frameIntervalRef.current = setInterval(async () => {
       const video = videoRef.current;
-      if (!video || video.readyState < 2 || !modelsLoaded) return;
+      if (!video || video.readyState < 2 || !modelsLoaded || !faceapi) return;
 
       try {
         const detections = await faceapi.detectAllFaces(

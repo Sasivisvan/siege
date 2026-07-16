@@ -98,7 +98,7 @@ export default function ClassroomPage() {
                 </p>
               </div>
               {isTeacher ? (
-                <button onClick={() => alert("Teacher analytics viewing is still under construction!")} className="button outline">
+                <button onClick={() => router.push(`/exams/${exam.id}/results`)} className="button outline">
                   View Results
                 </button>
               ) : (

@@ -18,16 +18,22 @@ function CreateExamForm() {
   const [duration, setDuration] = useState('60');
 
   const [questions, setQuestions] = useState([
-    { title: '', description: '', type: 'coding', points: 10 }
+    { title: '', description: '', type: 'mcq', points: 10, options: ['', '', '', ''], correctOption: 0 }
   ]);
 
   const addQuestion = () => {
-    setQuestions([...questions, { title: '', description: '', type: 'coding', points: 10 }]);
+    setQuestions([...questions, { title: '', description: '', type: 'mcq', points: 10, options: ['', '', '', ''], correctOption: 0 }]);
   };
 
-  const updateQuestion = (index: number, field: string, value: string | number) => {
+  const updateQuestion = (index: number, field: string, value: any) => {
     const newQuestions = [...questions];
     newQuestions[index] = { ...newQuestions[index], [field]: value };
+    setQuestions(newQuestions);
+  };
+
+  const updateOption = (qIndex: number, oIndex: number, value: string) => {
+    const newQuestions = [...questions];
+    newQuestions[qIndex].options[oIndex] = value;
     setQuestions(newQuestions);
   };
 
@@ -102,10 +108,8 @@ function CreateExamForm() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div className="field">
                   <label>Type</label>
-                  <select value={q.type} onChange={e => updateQuestion(index, 'type', e.target.value)}>
-                    <option value="coding">Coding Challenge</option>
+                  <select disabled value={q.type} onChange={e => updateQuestion(index, 'type', e.target.value)}>
                     <option value="mcq">Multiple Choice</option>
-                    <option value="aptitude">Aptitude / Free Text</option>
                   </select>
                 </div>
                 <div className="field">
@@ -116,11 +120,37 @@ function CreateExamForm() {
               
               <div className="field">
                 <label>Question Title</label>
-                <input type="text" required value={q.title} onChange={e => updateQuestion(index, 'title', e.target.value)} placeholder="e.g., Reverse a Linked List" />
+                <input type="text" required value={q.title} onChange={e => updateQuestion(index, 'title', e.target.value)} placeholder="e.g., What is React?" />
               </div>
               <div className="field">
                 <label>Question Description / Prompt</label>
-                <textarea required value={q.description} onChange={e => updateQuestion(index, 'description', e.target.value)} placeholder="Provide the details of the problem..." rows={4}></textarea>
+                <textarea required value={q.description} onChange={e => updateQuestion(index, 'description', e.target.value)} placeholder="Provide the details of the problem..." rows={2}></textarea>
+              </div>
+              
+              <div className="field">
+                <label>Options</label>
+                <div style={{ display: 'grid', gap: '0.5rem' }}>
+                  {q.options.map((opt, oIndex) => (
+                    <div key={oIndex} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <input 
+                        type="radio" 
+                        name={`correct-${index}`} 
+                        checked={q.correctOption === oIndex} 
+                        onChange={() => updateQuestion(index, 'correctOption', oIndex)} 
+                        title="Select as correct answer"
+                      />
+                      <input 
+                        type="text" 
+                        required 
+                        value={opt} 
+                        onChange={e => updateOption(index, oIndex, e.target.value)} 
+                        placeholder={`Option ${String.fromCharCode(65 + oIndex)}`} 
+                        style={{ flex: 1 }}
+                      />
+                    </div>
+                  ))}
+                </div>
+                <p style={{ fontSize: '0.8rem', color: 'var(--muted)', marginTop: '0.25rem' }}>Select the radio button next to the correct option.</p>
               </div>
             </div>
           ))}
