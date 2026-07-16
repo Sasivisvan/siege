@@ -37,7 +37,7 @@ export async function startExamSession(
   }
 
   // Check if candidate already has a session for this exam
-  let session = await Session.findOne({
+  let session: any = await Session.findOne({
     examId,
     candidateId,
   }).select('+hmacSecret');
