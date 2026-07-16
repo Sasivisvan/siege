@@ -62,8 +62,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const savedUser = localStorage.getItem(USER_KEY);
 
     if (savedToken && savedUser) {
-      setToken(savedToken);
-      setUser(JSON.parse(savedUser));
+      try {
+        const parsed = JSON.parse(savedUser);
+        // Validate shape before trusting localStorage data
+        if (
+          typeof parsed === 'object' && parsed !== null &&
+          typeof parsed.id === 'string' &&
+          typeof parsed.email === 'string' &&
+          typeof parsed.name === 'string' &&
+          ['candidate', 'recruiter', 'admin'].includes(parsed.role)
+        ) {
+          setToken(savedToken);
+          setUser(parsed as User);
+        } else {
+          // Corrupted data — clear it
+          localStorage.removeItem(TOKEN_KEY);
+          localStorage.removeItem(USER_KEY);
+        }
+      } catch {
+        // Malformed JSON — clear it
+        localStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem(USER_KEY);
+      }
     }
 
     setIsLoading(false);

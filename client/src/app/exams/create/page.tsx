@@ -108,8 +108,10 @@ function CreateExamForm() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div className="field">
                   <label>Type</label>
-                  <select disabled value={q.type} onChange={e => updateQuestion(index, 'type', e.target.value)}>
+                  <select value={q.type} onChange={e => updateQuestion(index, 'type', e.target.value)}>
                     <option value="mcq">Multiple Choice</option>
+                    <option value="aptitude">Aptitude</option>
+                    <option value="coding">Coding</option>
                   </select>
                 </div>
                 <div className="field">
@@ -127,31 +129,37 @@ function CreateExamForm() {
                 <textarea required value={q.description} onChange={e => updateQuestion(index, 'description', e.target.value)} placeholder="Provide the details of the problem..." rows={2}></textarea>
               </div>
               
-              <div className="field">
-                <label>Options</label>
-                <div style={{ display: 'grid', gap: '0.5rem' }}>
-                  {q.options.map((opt, oIndex) => (
-                    <div key={oIndex} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <input 
-                        type="radio" 
-                        name={`correct-${index}`} 
-                        checked={q.correctOption === oIndex} 
-                        onChange={() => updateQuestion(index, 'correctOption', oIndex)} 
-                        title="Select as correct answer"
-                      />
-                      <input 
-                        type="text" 
-                        required 
-                        value={opt} 
-                        onChange={e => updateOption(index, oIndex, e.target.value)} 
-                        placeholder={`Option ${String.fromCharCode(65 + oIndex)}`} 
-                        style={{ flex: 1 }}
-                      />
-                    </div>
-                  ))}
+              {q.type !== 'coding' ? (
+                <div className="field">
+                  <label>Options</label>
+                  <div style={{ display: 'grid', gap: '0.5rem' }}>
+                    {q.options.map((opt, oIndex) => (
+                      <div key={oIndex} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <input 
+                          type="radio" 
+                          name={`correct-${index}`} 
+                          checked={q.correctOption === oIndex} 
+                          onChange={() => updateQuestion(index, 'correctOption', oIndex)} 
+                          title="Select as correct answer"
+                        />
+                        <input 
+                          type="text" 
+                          required 
+                          value={opt} 
+                          onChange={e => updateOption(index, oIndex, e.target.value)} 
+                          placeholder={`Option ${String.fromCharCode(65 + oIndex)}`} 
+                          style={{ flex: 1 }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--muted)', marginTop: '0.25rem' }}>Select the radio button next to the correct option.</p>
                 </div>
-                <p style={{ fontSize: '0.8rem', color: 'var(--muted)', marginTop: '0.25rem' }}>Select the radio button next to the correct option.</p>
-              </div>
+              ) : (
+                <div className="field">
+                  <p style={{ fontSize: '0.8rem', color: 'var(--muted)' }}>Coding questions do not use multiple choice options. Test cases can be configured after creation.</p>
+                </div>
+              )}
             </div>
           ))}
         </div>

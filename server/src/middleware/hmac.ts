@@ -56,10 +56,12 @@ export async function verifyHMAC(
       throw new AppError(`Session is ${session.status}. Cannot accept telemetry.`, 400);
     }
 
-    // Compute expected HMAC
+    // Compute expected HMAC against the raw body to avoid re-serialization mismatches
+    const rawBody = (req as any).rawBody as Buffer | undefined;
+    const bodyToSign = rawBody ? rawBody : Buffer.from(JSON.stringify(req.body));
     const expectedSignature = crypto
       .createHmac('sha256', session.hmacSecret)
-      .update(JSON.stringify(req.body))
+      .update(bodyToSign)
       .digest('hex');
 
     // Timing-safe comparison to prevent timing attacks

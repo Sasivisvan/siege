@@ -28,8 +28,8 @@ router.post(
     body('name').notEmpty().withMessage('Name is required').trim(),
     body('role')
       .optional()
-      .isIn(['candidate', 'recruiter', 'admin'])
-      .withMessage('Role must be candidate, recruiter, or admin'),
+      .isIn(['candidate', 'recruiter'])
+      .withMessage('Role must be candidate or recruiter'),
   ]),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     const { email, password, name, role } = req.body;

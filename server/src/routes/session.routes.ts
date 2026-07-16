@@ -4,11 +4,27 @@
 
 import { Router, Response } from 'express';
 import { Session } from '../models/Session.js';
+import { Exam } from '../models/Exam.js';
 import { TelemetryEvent } from '../models/TelemetryEvent.js';
 import { authenticate, authorize } from '../middleware/auth.js';
 import { asyncHandler, AppError } from '../middleware/errorHandler.js';
 import { recalculateSessionRisk } from '../services/riskEngine.js';
 import type { AuthenticatedRequest } from '../types/index.js';
+
+/**
+ * Verify that the requesting recruiter owns the exam associated with a session.
+ * Admins bypass this check.
+ */
+async function verifySessionOwnership(
+  session: { examId: any },
+  req: AuthenticatedRequest
+): Promise<void> {
+  if (req.user!.role === 'admin') return;
+  const exam = await Exam.findById(session.examId).select('createdBy').lean();
+  if (!exam || exam.createdBy.toString() !== req.user!.userId) {
+    throw new AppError('Unauthorized: you do not own this exam', 403);
+  }
+}
 
 const router = Router();
 
@@ -92,6 +108,9 @@ router.get(
       throw new AppError('Session not found', 404);
     }
 
+    // Verify ownership: recruiter must own the exam
+    await verifySessionOwnership(session, req);
+
     const events = await TelemetryEvent.find({ sessionId })
       .sort({ timestamp: 1 })
       .lean();
@@ -125,6 +144,9 @@ router.get(
       throw new AppError('Session not found', 404);
     }
 
+    // Verify ownership: recruiter must own the exam
+    await verifySessionOwnership(session, req);
+
     // Recalculate fresh risk score
     const riskScore = await recalculateSessionRisk(sessionId);
 
@@ -151,6 +173,9 @@ router.patch(
     if (!session) {
       throw new AppError('Session not found', 404);
     }
+
+    // Verify ownership: recruiter must own the exam
+    await verifySessionOwnership(session, req);
 
     if (lock) {
       session.status = 'locked';

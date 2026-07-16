@@ -4,6 +4,7 @@
 
 import { Router, Response } from 'express';
 import { body } from 'express-validator';
+import sanitizeHtml from 'sanitize-html';
 import { Exam } from '../models/Exam.js';
 import { authenticate, authorize } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
@@ -13,6 +14,11 @@ import { checkPlagiarism } from '../services/plagiarism.js';
 import { Submission } from '../models/Submission.js';
 import { Classroom } from '../models/Classroom.js';
 import type { AuthenticatedRequest } from '../types/index.js';
+
+/** Strip all HTML tags from user-provided text fields to prevent stored XSS */
+function sanitizeText(text: string): string {
+  return sanitizeHtml(text, { allowedTags: [], allowedAttributes: {} });
+}
 
 const router = Router();
 
@@ -50,6 +56,13 @@ router.post(
 
     const exam = await Exam.create({
       ...examData,
+      title: sanitizeText(examData.title),
+      description: sanitizeText(examData.description),
+      questions: examData.questions?.map((q: any) => ({
+        ...q,
+        title: sanitizeText(q.title),
+        description: sanitizeText(q.description),
+      })),
       createdBy: req.user!.userId,
     });
 
@@ -93,23 +106,21 @@ router.get(
   '/:examId',
   authenticate,
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    // Candidates get a stripped version — use projection for defense-in-depth
+    if (req.user!.role === 'candidate') {
+      const exam = await Exam.findById(req.params.examId)
+        .select('-questions.correctOption -questions.testCases');
+      if (!exam) {
+        throw new AppError('Exam not found', 404);
+      }
+      // Re-add only visible test cases via service layer (examService handles this at start)
+      res.status(200).json({ success: true, data: { exam } });
+      return;
+    }
+
     const exam = await Exam.findById(req.params.examId);
     if (!exam) {
       throw new AppError('Exam not found', 404);
-    }
-
-    // Candidates see limited data
-    if (req.user!.role === 'candidate') {
-      const sanitized = exam.toJSON() as Record<string, unknown>;
-      sanitized.questions = (sanitized.questions as Record<string, unknown>[]).map((q) => {
-        delete q.correctOption;
-        if (Array.isArray(q.testCases)) {
-          q.testCases = (q.testCases as Array<{ isHidden: boolean }>).filter((tc) => !tc.isHidden);
-        }
-        return q;
-      });
-      res.status(200).json({ success: true, data: { exam: sanitized } });
-      return;
     }
 
     res.status(200).json({ success: true, data: { exam } });
@@ -125,9 +136,18 @@ router.put(
   authenticate,
   authorize('recruiter', 'admin'),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    // Whitelist mutable fields to prevent NoSQL injection / field overwrite
+    const { title, description, duration, questions, settings } = req.body;
+    const allowedUpdates: Record<string, unknown> = {};
+    if (title !== undefined) allowedUpdates.title = title;
+    if (description !== undefined) allowedUpdates.description = description;
+    if (duration !== undefined) allowedUpdates.duration = duration;
+    if (questions !== undefined) allowedUpdates.questions = questions;
+    if (settings !== undefined) allowedUpdates.settings = settings;
+
     const exam = await Exam.findOneAndUpdate(
       { _id: req.params.examId, createdBy: req.user!.userId },
-      req.body,
+      { $set: allowedUpdates },
       { new: true, runValidators: true }
     );
 
@@ -196,8 +216,8 @@ router.post(
       req.user!.userId
     );
 
-    // Trigger async plagiarism check for all code submissions in this session
-    setImmediate(async () => {
+    // Trigger async plagiarism check — fire-and-forget with proper error handling
+    void (async () => {
       try {
         const submissions = await Submission.find({
           sessionId: session._id,
@@ -211,7 +231,7 @@ router.post(
       } catch (error) {
         console.error(`❌ Plagiarism check failed for session ${session._id}:`, error);
       }
-    });
+    })();
 
     res.status(200).json({
       success: true,

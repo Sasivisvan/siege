@@ -8,7 +8,7 @@
 import { signPayload } from '@/lib/hmac';
 import { apiFetch } from '@/lib/api';
 
-// --- Event Queue ---
+// --- Event Queue (singleton-safe across Next.js hot reloads) ---
 
 interface TelemetryEvent {
   eventType: string;
@@ -17,14 +17,25 @@ interface TelemetryEvent {
   questionIndex?: number;
 }
 
-const queue: TelemetryEvent[] = [];
+// Use a globalThis-attached singleton to survive HMR re-instantiation
+const QUEUE_KEY = '__siege_telemetry_queue__';
+
+function getQueue(): TelemetryEvent[] {
+  if (typeof globalThis !== 'undefined') {
+    if (!(globalThis as any)[QUEUE_KEY]) {
+      (globalThis as any)[QUEUE_KEY] = [];
+    }
+    return (globalThis as any)[QUEUE_KEY];
+  }
+  return [];
+}
 
 /**
  * Add a telemetry event to the queue.
  * Events are batched and sent periodically.
  */
 export function enqueueTelemetry(event: TelemetryEvent) {
-  queue.push(event);
+  getQueue().push(event);
 }
 
 /**
@@ -38,7 +49,7 @@ export async function flushTelemetry(
   sessionId: string,
   hmacSecret: string
 ): Promise<{ received: number; sessionRisk: number } | null> {
-  const events = queue.splice(0);
+  const events = getQueue().splice(0);
 
   if (events.length === 0) {
     return null;

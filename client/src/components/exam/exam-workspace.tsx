@@ -103,7 +103,7 @@ export function ExamWorkspace({ examId }: ExamWorkspaceProps) {
 
     const timer = setTimeout(() => setTimeLeft((t) => (t !== null ? t - 1 : null)), 1000);
     return () => clearTimeout(timer);
-  }, [status, timeLeft]);
+  }, [status, timeLeft, handleSubmit]);
 
   // --- Auto-save Answer ---
   const saveAnswer = useCallback(async (questionId: string, value: string | number) => {
@@ -127,7 +127,7 @@ export function ExamWorkspace({ examId }: ExamWorkspaceProps) {
   }, [sessionId]);
 
   // --- Submit Exam ---
-  async function handleSubmit() {
+  const handleSubmit = useCallback(async () => {
     if (!sessionId || !exam) return;
 
     try {
@@ -139,7 +139,7 @@ export function ExamWorkspace({ examId }: ExamWorkspaceProps) {
     } catch (err) {
       console.error('[ExamWorkspace] Submit failed:', err);
     }
-  }
+  }, [sessionId, exam]);
 
   // --- Format Timer ---
   function formatTime(s: number): string {
@@ -203,7 +203,7 @@ export function ExamWorkspace({ examId }: ExamWorkspaceProps) {
   return (
     <section className="workspace">
       {proctoring.tabSwitchCount > 0 && (
-        <div style={{ background: '#ffffff', color: '#000000', padding: '12px 16px', borderRadius: 8, marginBottom: 16, fontWeight: 'bold' }}>
+        <div style={{ background: 'var(--warning, #ffcc00)', color: '#000', padding: '12px 16px', borderRadius: 8, marginBottom: 16, fontWeight: 'bold' }}>
           ⚠️ Warning: You have switched tabs {proctoring.tabSwitchCount} time(s). Continuing to leave the exam window will result in your session being locked.
         </div>
       )}

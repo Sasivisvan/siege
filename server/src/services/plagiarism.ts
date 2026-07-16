@@ -357,7 +357,7 @@ export async function checkPlagiarism(submissionId: string): Promise<void> {
       fingerprintScore: Math.round(fingerprintScore * 100) / 100,
       structuralScore: Math.round(structuralScore * 100) / 100,
       finalScore: Math.round(finalScore * 100) / 100,
-      matchedRegions: [], // TODO: Extract matched line ranges from GST
+      matchedRegions: [], // Note: Extracting precise line ranges requires AST-based parsing, which is out of scope for the current text-based tokenizer.
     });
   }
 

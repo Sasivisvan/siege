@@ -16,7 +16,8 @@ export function AuthPanel({ mode }: AuthPanelProps) {
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  async function handleSubmit() {
+  async function handleSubmit(e?: React.FormEvent) {
+    if (e) e.preventDefault();
     setError("");
     setIsSubmitting(true);
 
@@ -43,7 +44,8 @@ export function AuthPanel({ mode }: AuthPanelProps) {
         <div className="error-banner">{error}</div>
       )}
 
-      {mode === "register" && (
+      <form onSubmit={handleSubmit} className="stack">
+        {mode === "register" && (
         <label className="stack">
           <span>Name</span>
           <input
@@ -84,18 +86,18 @@ export function AuthPanel({ mode }: AuthPanelProps) {
         </label>
       )}
 
-      <button
-        className="button primary"
-        type="button"
-        onClick={handleSubmit}
-        disabled={isSubmitting}
-      >
-        {isSubmitting
-          ? "Please wait..."
-          : mode === "login"
-            ? "Sign in"
-            : "Create account"}
-      </button>
+        <button
+          className="button primary"
+          type="submit"
+          disabled={isSubmitting}
+        >
+          {isSubmitting
+            ? "Please wait..."
+            : mode === "login"
+              ? "Sign in"
+              : "Create account"}
+        </button>
+      </form>
 
       <p style={{ textAlign: "center", color: "var(--muted)", fontSize: "0.9rem" }}>
         {mode === "login" ? (

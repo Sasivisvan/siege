@@ -14,6 +14,13 @@ if (!MONGODB_URI) {
   process.exit(1);
 }
 
+import crypto from 'crypto';
+
+if (process.env.NODE_ENV === 'production') {
+  console.error('CRITICAL: Seed script cannot be run in production.');
+  process.exit(1);
+}
+
 async function seed() {
   try {
     console.log('Connecting to database...');
@@ -25,11 +32,16 @@ async function seed() {
     await User.deleteMany({});
     await Exam.deleteMany({});
 
+    // Generate strong random passwords
+    const teacherPassword = crypto.randomBytes(12).toString('hex');
+    const student1Password = crypto.randomBytes(12).toString('hex');
+    const student2Password = crypto.randomBytes(12).toString('hex');
+
     // Create Recruiter (Teacher)
     console.log('Creating users (teachers and students)...');
     const recruiter = await User.create({
       email: 'teacher@siege.com',
-      password: '***REMOVED***',
+      password: teacherPassword,
       name: 'John Doe (Teacher)',
       role: 'recruiter',
     });
@@ -37,14 +49,14 @@ async function seed() {
     // Create Students
     const student1 = await User.create({
       email: 'student1@siege.com',
-      password: '***REMOVED***',
+      password: student1Password,
       name: 'Alice Smith',
       role: 'candidate',
     });
 
     const student2 = await User.create({
       email: 'student2@siege.com',
-      password: '***REMOVED***',
+      password: student2Password,
       name: 'Bob Johnson',
       role: 'candidate',
     });
@@ -96,8 +108,11 @@ async function seed() {
     });
 
     console.log('✅ Seed completed successfully!');
-    console.log('Recruiter:', recruiter.email);
-    console.log('Students:', student1.email, ',', student2.email);
+    console.log('--- CREDENTIALS ---');
+    console.log(`Recruiter: ${recruiter.email} / ${teacherPassword}`);
+    console.log(`Student 1: ${student1.email} / ${student1Password}`);
+    console.log(`Student 2: ${student2.email} / ${student2Password}`);
+    console.log('-------------------');
     console.log('Exam ID:', exam._id);
 
     process.exit(0);

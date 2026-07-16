@@ -32,9 +32,13 @@ router.post(
     body('name').notEmpty().withMessage('Name is required').trim(),
   ]),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-    // Generate a unique join code
+    // Generate a unique join code with max retries
     let joinCode = generateJoinCode();
+    let attempts = 0;
     while (await Classroom.findOne({ joinCode })) {
+      if (++attempts > 10) {
+        throw new AppError('Failed to generate a unique join code. Please try again.', 500);
+      }
       joinCode = generateJoinCode();
     }
 

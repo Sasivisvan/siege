@@ -136,6 +136,7 @@ export function useProctoring({ sessionId, hmacSecret, enabled }: UseProctoringO
           
           if (eyeDist > 0 && Math.abs(nose.x - eyeCenter.x) > eyeDist * 0.5) {
             isHeadAway = true;
+            emit('HEAD_AWAY', { reason: 'eyes_averted' });
           }
         }
 
@@ -186,10 +187,13 @@ export function useProctoring({ sessionId, hmacSecret, enabled }: UseProctoringO
       }
     }
 
-    // Window focus lost (Alt+Tab)
+    // Window focus lost (Alt+Tab) — only count if document is still visible
+    // (visibilitychange already handles the hidden case)
     function handleBlur() {
-      setTabSwitchCount((c) => c + 1);
-      emit('TAB_SWITCH', { direction: 'away', type: 'blur' });
+      if (!document.hidden) {
+        setTabSwitchCount((c) => c + 1);
+        emit('TAB_SWITCH', { direction: 'away', type: 'blur' });
+      }
     }
 
     // Fullscreen change
@@ -208,6 +212,7 @@ export function useProctoring({ sessionId, hmacSecret, enabled }: UseProctoringO
     }
 
     function handlePaste(e: ClipboardEvent) {
+      e.preventDefault();
       emit('COPY_PASTE', { action: 'paste', textLength: e.clipboardData?.getData('text')?.length ?? 0 });
     }
 

@@ -61,8 +61,8 @@ export default function DashboardPage() {
       });
       setJoinCode('');
       fetchClassrooms(); // Refresh list
-    } catch (err: any) {
-      setJoinError(err.message || 'Failed to join classroom');
+    } catch (err: unknown) {
+      setJoinError(err instanceof Error ? err.message : 'Failed to join classroom');
     } finally {
       setJoinLoading(false);
     }
@@ -79,8 +79,8 @@ export default function DashboardPage() {
       });
       setCreateName('');
       fetchClassrooms(); // Refresh list
-    } catch (err: any) {
-      setCreateError(err.message || 'Failed to create classroom');
+    } catch (err: unknown) {
+      setCreateError(err instanceof Error ? err.message : 'Failed to create classroom');
     } finally {
       setCreateLoading(false);
     }

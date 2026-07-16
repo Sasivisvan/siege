@@ -11,6 +11,12 @@ import rateLimit from 'express-rate-limit';
 export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 5,
+  keyGenerator: (req) => {
+    // Key by IP + email (if present) to prevent distributed brute force
+    const ip = req.ip || req.socket.remoteAddress || 'unknown';
+    const email = req.body?.email ? String(req.body.email).toLowerCase() : 'no-email';
+    return `${ip}_${email}`;
+  },
   message: {
     success: false,
     error: { message: 'Too many authentication attempts. Try again in 15 minutes.' },

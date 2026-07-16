@@ -51,8 +51,13 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'X-HMAC-Signature'],
 }));
 
-// Body parsing
-app.use(express.json({ limit: '10mb' }));
+// Body parsing — capture raw body for HMAC verification
+app.use(express.json({
+  limit: '10mb',
+  verify: (req: any, _res, buf) => {
+    req.rawBody = buf;
+  },
+}));
 app.use(express.urlencoded({ extended: true }));
 
 // Request logging
