@@ -32,6 +32,9 @@ import { startHeartbeatMonitor } from './services/heartbeat.js';
 
 const app = express();
 
+// Trust reverse proxy (required for express-rate-limit when behind Vercel/Nginx/etc)
+app.set('trust proxy', 1);
+
 // ============================================
 // Global Middleware
 // ============================================

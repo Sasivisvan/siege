@@ -19,6 +19,7 @@ interface ProctoringState {
   isFullscreen: boolean;
   isLocked: boolean;
   tabSwitchCount: number;
+  videoRef: React.RefObject<HTMLVideoElement | null>;
 }
 
 interface UseProctoringOptions {
@@ -44,9 +45,16 @@ export function useProctoring({ sessionId, hmacSecret, enabled }: UseProctoringO
   const [isLocked, setIsLocked] = useState(false);
   const [tabSwitchCount, setTabSwitchCount] = useState(0);
 
+  const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const workerRef = useRef<Worker | null>(null);
+  const frameIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const flushTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const heartbeatTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Consecutive counts for events to avoid false positives
+  const missingCountRef = useRef(0);
+  const multipleCountRef = useRef(0);
 
   // --- Emit Telemetry Event ---
   const emit = useCallback((eventType: string, metadata: Record<string, unknown> = {}) => {
@@ -73,6 +81,9 @@ export function useProctoring({ sessionId, hmacSecret, enabled }: UseProctoringO
           return;
         }
         streamRef.current = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
         setWebcamReady(true);
       } catch (err) {
         console.warn('[Proctoring] Webcam access denied:', err);
@@ -82,12 +93,55 @@ export function useProctoring({ sessionId, hmacSecret, enabled }: UseProctoringO
 
     startWebcam();
 
+    // Setup Web Worker for ML
+    workerRef.current = new Worker(new URL('../workers/proctoring.worker.ts', import.meta.url));
+    
+    workerRef.current.onmessage = (e) => {
+      if (e.data.type === 'RESULT') {
+        const res = e.data.result;
+        
+        if (res.isMissing) {
+          missingCountRef.current += 1;
+          if (missingCountRef.current === 10) { // 10 seconds missing
+            emit('FACE_MISSING', { duration: 10 });
+          }
+        } else {
+          missingCountRef.current = 0;
+        }
+
+        if (res.isMultiple) {
+          multipleCountRef.current += 1;
+          if (multipleCountRef.current === 5) { // 5 seconds multiple faces
+            emit('MULTIPLE_FACES', { count: res.facesDetected });
+          }
+        } else {
+          multipleCountRef.current = 0;
+        }
+      }
+    };
+
+    // Frame capture loop
+    frameIntervalRef.current = setInterval(async () => {
+      const video = videoRef.current;
+      const worker = workerRef.current;
+      if (video && video.readyState >= 2 && worker) {
+        try {
+          const bitmap = await createImageBitmap(video);
+          worker.postMessage({ type: 'PROCESS_FRAME', bitmap }, [bitmap]);
+        } catch (e) {
+          // Ignore bitmap creation errors (e.g., if video gets hidden)
+        }
+      }
+    }, 1000);
+
     return () => {
       cancelled = true;
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((t) => t.stop());
         streamRef.current = null;
       }
+      if (frameIntervalRef.current) clearInterval(frameIntervalRef.current);
+      if (workerRef.current) workerRef.current.terminate();
     };
   }, [enabled]);
 
@@ -181,5 +235,6 @@ export function useProctoring({ sessionId, hmacSecret, enabled }: UseProctoringO
     isFullscreen,
     isLocked,
     tabSwitchCount,
+    videoRef,
   };
 }
