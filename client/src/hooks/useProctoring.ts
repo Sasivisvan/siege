@@ -250,7 +250,8 @@ export function useProctoring({ sessionId, hmacSecret, enabled }: UseProctoringO
       try {
         // 1. Run face & phone detections asynchronously on the raw video stream (un-mirrored)
         const detections = await faceapi.detectAllFaces(
-          video
+          video,
+          new faceapi.SsdMobilenetv1Options({ minConfidence: 0.2 })
         ).withFaceLandmarks();
 
         let phoneCount = 0;
