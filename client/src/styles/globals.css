@@ -1,13 +1,13 @@
 :root {
   color-scheme: dark;
-  --bg: #07111f;
-  --panel: rgba(13, 24, 42, 0.88);
-  --panel-border: rgba(148, 163, 184, 0.16);
-  --text: #e5eefc;
-  --muted: #94a3b8;
-  --accent: #7dd3fc;
-  --accent-strong: #38bdf8;
-  --shadow: 0 24px 80px rgba(2, 6, 23, 0.4);
+  --bg: #050505;
+  --panel: rgba(20, 20, 20, 0.85);
+  --panel-border: rgba(255, 255, 255, 0.15);
+  --text: #f0f0f0;
+  --muted: #888888;
+  --accent: #ffffff;
+  --accent-strong: #ffffff;
+  --shadow: 0 24px 60px rgba(0, 0, 0, 0.8);
 }
 
 * {
@@ -19,8 +19,8 @@ body {
   margin: 0;
   min-height: 100%;
   background:
-    radial-gradient(circle at top left, rgba(56, 189, 248, 0.12), transparent 30%),
-    linear-gradient(180deg, #07111f 0%, #050b15 100%);
+    radial-gradient(circle at top left, rgba(255, 255, 255, 0.05), transparent 40%),
+    linear-gradient(180deg, #050505 0%, #000000 100%);
   color: var(--text);
   font-family: Inter, system-ui, sans-serif;
 }
@@ -41,20 +41,20 @@ input,
 textarea,
 select {
   width: 100%;
-  padding: 12px 16px;
-  border-radius: 12px;
+  padding: 14px 18px;
+  border-radius: 8px;
   border: 1px solid var(--panel-border);
-  background: rgba(15, 23, 42, 0.72);
+  background: rgba(25, 25, 25, 0.7);
   color: var(--text);
   outline: none;
-  transition: border-color 0.2s;
+  transition: all 0.2s ease;
 }
 
 input:focus,
 textarea:focus,
 select:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(125, 211, 252, 0.1);
+  border-color: var(--text);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.2);
 }
 
 input::placeholder,
@@ -66,7 +66,7 @@ textarea::placeholder {
 select {
   cursor: pointer;
   appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2394a3b8' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23888888' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 14px center;
   padding-right: 36px;
@@ -96,12 +96,13 @@ textarea {
 }
 
 .error-banner {
-  padding: 12px 16px;
-  border-radius: 12px;
-  background: rgba(239, 68, 68, 0.15);
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  color: #fca5a5;
+  padding: 14px 18px;
+  border-radius: 8px;
+  background: #111111;
+  border: 1px solid var(--panel-border);
+  color: var(--text);
   font-size: 0.9rem;
+  font-weight: 500;
 }
 
 .shell {
@@ -113,19 +114,20 @@ textarea {
 .hero {
   display: grid;
   gap: 24px;
-  padding: 40px;
+  padding: 48px;
   border: 1px solid var(--panel-border);
-  border-radius: 28px;
+  border-radius: 16px;
   background: var(--panel);
   box-shadow: var(--shadow);
   backdrop-filter: blur(18px);
 }
 
 .eyebrow {
-  color: var(--accent);
-  letter-spacing: 0.18em;
+  color: var(--muted);
+  letter-spacing: 0.2em;
   text-transform: uppercase;
-  font-size: 0.78rem;
+  font-size: 0.75rem;
+  font-weight: 600;
 }
 
 .hero h1 {
@@ -154,16 +156,29 @@ textarea {
   align-items: center;
   justify-content: center;
   min-height: 48px;
-  padding: 0 18px;
-  border-radius: 999px;
+  padding: 0 24px;
+  border-radius: 8px;
   border: 1px solid var(--panel-border);
-  background: rgba(148, 163, 184, 0.08);
+  background: rgba(255, 255, 255, 0.05);
   color: var(--text);
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.button:hover {
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .button.primary {
-  border-color: rgba(56, 189, 248, 0.4);
-  background: linear-gradient(135deg, var(--accent-strong), #2563eb);
+  border-color: #ffffff;
+  background: #ffffff;
+  color: #000000;
+  font-weight: 600;
+}
+
+.button.primary:hover {
+  background: #d4d4d4;
+  border-color: #d4d4d4;
 }
 
 .grid {
@@ -177,10 +192,10 @@ textarea {
 }
 
 .card {
-  padding: 20px;
-  border-radius: 22px;
+  padding: 24px;
+  border-radius: 12px;
   border: 1px solid var(--panel-border);
-  background: rgba(15, 23, 42, 0.72);
+  background: var(--panel);
 }
 
 .card h2,
@@ -216,9 +231,9 @@ textarea {
 }
 
 .meter-track {
-  height: 10px;
-  border-radius: 999px;
-  background: rgba(148, 163, 184, 0.12);
+  height: 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
   overflow: hidden;
 }
 
@@ -227,7 +242,7 @@ textarea {
   height: 100%;
   width: 38%;
   border-radius: inherit;
-  background: linear-gradient(90deg, var(--accent), var(--accent-strong));
+  background: #ffffff;
 }
 
 @media (max-width: 900px) {
