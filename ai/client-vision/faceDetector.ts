@@ -2,8 +2,10 @@
 // SIEGE — Face Detector (Client-Side Vision)
 // ============================================
 // Runs inside a Web Worker via TensorFlow.js
-// Uses BlazeFace for lightweight face detection
+// Uses face-api.js for face and landmark detection
 // ============================================
+
+import * as faceapi from '@vladmandic/face-api';
 
 /**
  * Face detection result from a single frame analysis.
@@ -13,44 +15,74 @@ export interface FaceDetectionResult {
   timestamp: number;
   isMissing: boolean;      // true if facesDetected === 0
   isMultiple: boolean;     // true if facesDetected > 1
+  isHeadAway: boolean;     // true if candidate is looking away
 }
 
 /**
  * Initialize the face detection model.
  * Call this once when the Web Worker starts.
- *
- * @returns Promise that resolves when the model is loaded
- *
- * TODO (Dev 3): Implement with TensorFlow.js + BlazeFace
- * ```
- * import * as blazeface from '@tensorflow-models/blazeface';
- * let model: blazeface.BlazeFaceModel;
- * export async function initFaceDetector() {
- *   model = await blazeface.load();
- * }
- * ```
  */
 export async function initFaceDetector(): Promise<void> {
-  // TODO: Load BlazeFace model
-  console.log('[FaceDetector] Model initialization placeholder');
+  // In a real environment, we'd host these models locally and provide the absolute path.
+  // For the worker environment, this path needs to point to where the weights are hosted.
+  const MODEL_URL = '/models'; 
+  await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+  await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+  console.log('[FaceDetector] Models loaded');
 }
 
 /**
  * Analyze a single video frame for face detection.
  *
- * @param imageData - Raw pixel data from canvas
+ * @param imageData - Raw pixel data from canvas (ImageData or HTMLCanvasElement)
  * @returns Face detection result with count and flags
- *
- * TODO (Dev 3): Implement frame analysis
  */
 export async function detectFaces(
-  imageData: ImageData
+  imageData: ImageData | any
 ): Promise<FaceDetectionResult> {
-  // TODO: Run model.estimateFaces(imageData)
+  let tensor;
+  try {
+    // Attempt to convert ImageData to tensor (works well in Workers)
+    tensor = faceapi.tf.browser.fromPixels(imageData);
+  } catch (e) {
+    // Fallback if imageData is HTMLImageElement/Canvas
+    tensor = imageData; 
+  }
+
+  const detections = await faceapi.detectAllFaces(
+    tensor, 
+    new faceapi.TinyFaceDetectorOptions()
+  ).withFaceLandmarks();
+  
+  if (tensor instanceof faceapi.tf.Tensor) {
+    tensor.dispose();
+  }
+
+  const facesDetected = detections.length;
+  let isHeadAway = false;
+
+  // Simple head pose check using landmarks
+  if (facesDetected === 1) {
+    const landmarks = detections[0].landmarks;
+    const nose = landmarks.getNose()[0];
+    const leftEye = landmarks.getLeftEye()[0];
+    const rightEye = landmarks.getRightEye()[0];
+    
+    // Calculate if the nose is too far to one side
+    const eyeCenter = { x: (leftEye.x + rightEye.x) / 2, y: (leftEye.y + rightEye.y) / 2 };
+    const eyeDist = rightEye.x - leftEye.x;
+    
+    // If nose offset > 50% of eye distance, head is turned significantly
+    if (eyeDist > 0 && Math.abs(nose.x - eyeCenter.x) > eyeDist * 0.5) {
+      isHeadAway = true;
+    }
+  }
+
   return {
-    facesDetected: 1,
+    facesDetected,
     timestamp: Date.now(),
-    isMissing: false,
-    isMultiple: false,
+    isMissing: facesDetected === 0,
+    isMultiple: facesDetected > 1,
+    isHeadAway
   };
 }

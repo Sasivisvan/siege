@@ -74,3 +74,4 @@ venv/
 *.tgz
 .cache/
 .turbo/
+*.pt

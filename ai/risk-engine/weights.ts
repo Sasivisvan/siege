@@ -21,4 +21,8 @@ export const RISK_WEIGHTS: Record<string, RiskWeight> = {
   LIVENESS_FAIL:     { perEvent: 40, cap: 40 },
   FULLSCREEN_EXIT:   { perEvent: 15, cap: 45 },
   API_MANIPULATION:  { perEvent: 100, cap: 100 },
+  PHONE_DETECTED:    { perEvent: 80, cap: 100 },
+  HEAD_AWAY:         { perEvent: 30, cap: 60 },
+  PLAGIARISM_DETECTED:{ perEvent: 100, cap: 100 },
 };
+

@@ -17,6 +17,9 @@ const SEVERITY_LABELS: Record<string, string> = {
   LIVENESS_FAIL: 'failed the liveness verification',
   FULLSCREEN_EXIT: 'exited fullscreen mode',
   API_MANIPULATION: 'showed signs of API/payload tampering',
+  PHONE_DETECTED: 'used a mobile phone during the exam',
+  HEAD_AWAY: 'looked away from the screen',
+  PLAGIARISM_DETECTED: 'submitted plagiarized code',
 };
 
 /**
