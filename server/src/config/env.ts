@@ -8,8 +8,8 @@
 import dotenv from 'dotenv';
 import path from 'path';
 
-// Load .env file
-dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+// Load .env file automatically from current working directory
+dotenv.config();
 
 /**
  * Validated environment configuration.
