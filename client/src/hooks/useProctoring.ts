@@ -231,46 +231,42 @@ export function useProctoring({ sessionId, hmacSecret, enabled }: UseProctoringO
       }
 
       try {
-        // Draw mirrored and contrast-enhanced webcam frame to canvas first
-        // This ensures the AI model runs on a brightened frame, drastically improving low-light accuracy!
-        if (canvas) {
-          const displaySize = { width: canvasWidth, height: canvasHeight };
-          faceapi.matchDimensions(canvas, displaySize);
-          const ctx = canvas.getContext('2d');
-          if (ctx) {
-            ctx.save();
-            ctx.translate(canvasWidth, 0);
-            ctx.scale(-1, 1);
-            ctx.filter = 'brightness(1.35) contrast(1.25)';
-            ctx.drawImage(video, 0, 0, canvasWidth, canvasHeight);
-            ctx.restore();
-          }
-        }
-
-        // 1. Run face detection on the mirrored, enhanced canvas frame (SsdMobilenetv1)
+        // 1. Run face & phone detections asynchronously on the raw video stream (un-mirrored)
         const detections = await faceapi.detectAllFaces(
-          canvas
+          video
         ).withFaceLandmarks();
 
         let phoneCount = 0;
         let phones: any[] = [];
         if (cocoSsdModel) {
-          // Detect phones on the video
           const predictions = await cocoSsdModel.detect(video);
           phones = predictions.filter((p: any) => p.class === 'cell phone');
           phoneCount = phones.length;
         }
 
-        // 2. Draw overlays in a single synchronous pass
+        // 2. Draw everything in a single synchronous pass
         if (canvas) {
           const displaySize = { width: canvasWidth, height: canvasHeight };
+          faceapi.matchDimensions(canvas, displaySize);
           const resizedDetections = faceapi.resizeResults(detections, displaySize);
           const ctx = canvas.getContext('2d');
+          
           if (ctx) {
-            // Draw face boxes & landmarks (already in mirrored space since we detected on mirrored canvas!)
+            // Draw video and overlays inside the mirrored coordinate system so they match perfectly!
+            ctx.save();
+            ctx.translate(canvasWidth, 0);
+            ctx.scale(-1, 1);
+            
+            // Draw contrast-enhanced video frame
+            ctx.filter = 'brightness(1.35) contrast(1.25)';
+            ctx.drawImage(video, 0, 0, canvasWidth, canvasHeight);
+            ctx.filter = 'none'; // reset filter for boxes
+            
+            // Draw face bounding boxes & landmarks (auto-mirrored by the canvas scale!)
             faceapi.draw.drawDetections(canvas, resizedDetections);
             faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
             
+            // Draw phone bounding boxes (auto-mirrored by the canvas scale!)
             if (phoneCount > 0) {
               emit('PHONE_DETECTED', { count: phoneCount, confidence: phones[0].score });
               
@@ -278,18 +274,16 @@ export function useProctoring({ sessionId, hmacSecret, enabled }: UseProctoringO
               ctx.lineWidth = 2;
               ctx.fillStyle = '#ff0000';
               ctx.font = '11px monospace';
-              const scaleX = canvas.width / video.videoWidth;
-              const scaleY = canvas.height / video.videoHeight;
+              const scaleX = canvasWidth / video.videoWidth;
+              const scaleY = canvasHeight / video.videoHeight;
               phones.forEach((p: any) => {
                 const [x, y, w, h] = p.bbox;
-                const scaledX = x * scaleX;
-                const scaledW = w * scaleX;
-                // Mirror the X coordinate to match the mirrored canvas
-                const drawX = canvasWidth - scaledX - scaledW;
-                ctx.strokeRect(drawX, y * scaleY, scaledW, h * scaleY);
-                ctx.fillText(`Phone (${Math.round(p.score * 100)}%)`, drawX + 4, (y * scaleY) > 15 ? (y * scaleY) - 4 : 15);
+                ctx.strokeRect(x * scaleX, y * scaleY, w * scaleX, h * scaleY);
+                ctx.fillText(`Phone (${Math.round(p.score * 100)}%)`, x * scaleX + 4, (y * scaleY) > 15 ? (y * scaleY) - 4 : 15);
               });
             }
+            
+            ctx.restore(); // Restore context to draw the HUD text without mirroring!
 
             // Draw high-tech HUD overlay
             ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
@@ -300,11 +294,11 @@ export function useProctoring({ sessionId, hmacSecret, enabled }: UseProctoringO
 
             ctx.font = 'bold 10px Courier New, monospace';
             
-            // Draw face count (green for 1, yellow for >1, red for 0)
+            // Draw face count
             ctx.fillStyle = detections.length === 1 ? '#00ff66' : detections.length > 1 ? '#ffcc00' : '#ff3333';
             ctx.fillText(`👥 Faces: ${detections.length}`, 12, 22);
 
-            // Draw phone count (red warning if >0)
+            // Draw phone count
             ctx.fillStyle = phoneCount > 0 ? '#ff3333' : '#a0a0b0';
             ctx.fillText(`📱 Phones: ${phoneCount}`, 12, 38);
           }
