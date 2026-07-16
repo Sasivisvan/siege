@@ -15,6 +15,8 @@ Each developer has a **primary folder**. You are free to work in your folder wit
 | Dev 3 | `ai/` | AI models, risk engine, face detection |
 | All | `shared/` | Shared types and contracts (requires review) |
 
+
+
 ---
 
 ## 🌿 Branch Naming Convention
