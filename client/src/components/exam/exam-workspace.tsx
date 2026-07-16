@@ -324,7 +324,7 @@ export function ExamWorkspace({ examId }: ExamWorkspaceProps) {
 
           <article className="card">
             <h3>Session Monitor</h3>
-            <div style={{ marginBottom: 12, borderRadius: 8, overflow: 'hidden', background: '#000', height: 120, position: 'relative' }}>
+            <div style={{ marginBottom: 12, borderRadius: 8, overflow: 'hidden', background: '#000', width: '100%', aspectRatio: '4/3', position: 'relative' }}>
               {!proctoring.webcamReady && (
                 <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
                   ⏳ Loading camera...
@@ -339,11 +339,13 @@ export function ExamWorkspace({ examId }: ExamWorkspaceProps) {
               />
               <canvas 
                 ref={proctoring.canvasRef}
-                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', transform: 'scaleX(-1)' }}
+                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
               />
             </div>
             <p>Fullscreen: {proctoring.isFullscreen ? '✅ active' : '⚠️ inactive'}</p>
             <p>Tab switches: {proctoring.tabSwitchCount}</p>
+            <p>👥 Faces detected: <strong style={{ color: proctoring.facesCount === 1 ? '#00ff66' : '#ff3333' }}>{proctoring.facesCount}</strong></p>
+            <p>📱 Phones detected: <strong style={{ color: proctoring.phonesCount > 0 ? '#ff3333' : 'var(--muted)' }}>{proctoring.phonesCount}</strong></p>
             {proctoring.isLocked && (
               <p style={{ color: '#ffffff', fontWeight: 'bold', marginTop: 8 }}>🔒 Session locked by proctor</p>
             )}

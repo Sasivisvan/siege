@@ -19,14 +19,22 @@ const HEARTBEAT_INTERVAL = 30_000;         // 30 seconds
 // We can load models once globally so hot-reloads don't crash
 let modelsLoaded = false;
 let faceapi: any = null;
+let cocoSsdModel: any = null;
 
 async function loadModels() {
   if (modelsLoaded) return;
   try {
     faceapi = await import('@vladmandic/face-api');
+    const cocoSsd = await import('@tensorflow-models/coco-ssd');
+    const tf = await import('@tensorflow/tfjs');
+    
     const MODEL_URL = '/models';
-    await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+    await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
     await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+    
+    await tf.ready();
+    cocoSsdModel = await cocoSsd.load({ base: 'lite_mobilenet_v2' });
+    
     modelsLoaded = true;
     console.log('[Proctoring] AI Models loaded successfully.');
   } catch (err) {
@@ -42,6 +50,10 @@ interface ProctoringState {
   tabSwitchCount: number;
   videoRef: React.RefObject<HTMLVideoElement | null>;
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
+  debugInfo: string;
+  logs: string[];
+  facesCount: number;
+  phonesCount: number;
 }
 
 interface UseProctoringOptions {
@@ -52,13 +64,6 @@ interface UseProctoringOptions {
 
 /**
  * Proctoring hook that monitors browser signals and sends telemetry.
- *
- * Usage:
- * ```
- * const { webcamReady, riskScore, isLocked } = useProctoring({
- *   sessionId, hmacSecret, enabled: true
- * });
- * ```
  */
 export function useProctoring({ sessionId, hmacSecret, enabled }: UseProctoringOptions): ProctoringState {
   const [webcamReady, setWebcamReady] = useState(false);
@@ -66,6 +71,15 @@ export function useProctoring({ sessionId, hmacSecret, enabled }: UseProctoringO
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
   const [tabSwitchCount, setTabSwitchCount] = useState(0);
+  const [debugInfo, setDebugInfo] = useState('Initializing proctoring...');
+  const [logs, setLogs] = useState<string[]>([]);
+  const [facesCount, setFacesCount] = useState(0);
+  const [phonesCount, setPhonesCount] = useState(0);
+
+  const addLog = useCallback((msg: string) => {
+    console.log(`[Proctoring] ${msg}`);
+    setLogs((prev) => [...prev, `${new Date().toLocaleTimeString()}: ${msg}`].slice(-8));
+  }, []);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -116,48 +130,200 @@ export function useProctoring({ sessionId, hmacSecret, enabled }: UseProctoringO
 
     async function startWebcam() {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: 640, height: 480, facingMode: 'user' },
-        });
+        addLog('Requesting camera permissions...');
+        setDebugInfo('Requesting camera permissions...');
+        let stream: MediaStream;
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+          });
+          addLog('Webcam stream obtained with ideal constraints.');
+        } catch (initialErr: any) {
+          console.warn('[Proctoring] Ideal camera constraints failed, trying basic video...', initialErr);
+          addLog(`Ideal camera failed (${initialErr.message || initialErr}). Trying basic video...`);
+          setDebugInfo('Ideal camera failed, trying basic video...');
+          stream = await navigator.mediaDevices.getUserMedia({ video: true });
+          addLog('Webcam stream obtained with basic constraints.');
+        }
+        
         if (cancelled) {
+          addLog('Webcam stream cancelled during setup.');
           stream.getTracks().forEach((t) => t.stop());
           return;
         }
         streamRef.current = stream;
         if (videoRef.current) {
+          addLog('Assigning stream to video.srcObject...');
+          setDebugInfo('Setting video source...');
+          videoRef.current.muted = true;
           videoRef.current.srcObject = stream;
+          videoRef.current.play()
+            .then(() => {
+              addLog('Video element playing successfully.');
+              setDebugInfo('Webcam active & playing.');
+            })
+            .catch(err => {
+              console.warn('[Proctoring] Video play failed', err);
+              addLog(`Play blocked: ${err.message || err}`);
+              setDebugInfo(`Play blocked: ${err.message || err}. Click page to start.`);
+            });
+        } else {
+          addLog('Warning: videoRef.current is NULL.');
+          setDebugInfo('Video ref not ready yet.');
         }
         setWebcamReady(true);
-      } catch (err) {
-        console.warn('[Proctoring] Webcam access denied:', err);
+      } catch (err: any) {
+        console.warn('[Proctoring] Webcam access completely denied:', err);
+        addLog(`Webcam error: ${err.message || err}`);
+        setDebugInfo(`Webcam error: ${err.message || err}`);
         setWebcamReady(false);
       }
     }
 
+    // Attempt to play video on any user interaction to bypass autoplay restrictions (e.g. Safari Low Power Mode)
+    function playOnInteraction() {
+      if (videoRef.current && videoRef.current.paused) {
+        addLog('User clicked page. Attempting fallback play()...');
+        videoRef.current.play()
+          .then(() => {
+            addLog('Play succeeded via user interaction.');
+            setDebugInfo('Webcam active (via interaction)');
+            window.removeEventListener('click', playOnInteraction);
+            window.removeEventListener('touchstart', playOnInteraction);
+          })
+          .catch(err => {
+            addLog(`Interaction play failed: ${err.message || err}`);
+            console.warn('[Proctoring] Interaction play failed', err);
+          });
+      }
+    }
+    window.addEventListener('click', playOnInteraction);
+    window.addEventListener('touchstart', playOnInteraction);
+
+    addLog(`Hook activated (sessionId: ${sessionId ? 'provided' : 'none'})`);
     startWebcam();
-    loadModels();
+    setDebugInfo('Loading AI models...');
+    addLog('Importing AI models...');
+    loadModels().then(() => {
+      setDebugInfo('AI Models loaded. Monitoring...');
+      addLog('AI Models loaded. Starting monitoring loop.');
+    });
 
     // Frame capture loop (runs every 1 second)
     frameIntervalRef.current = setInterval(async () => {
       const video = videoRef.current;
       const canvas = canvasRef.current;
-      if (!video || video.readyState < 2 || !modelsLoaded || !faceapi) return;
+
+      const canvasWidth = 320;
+      const canvasHeight = 240;
+
+      // Self-healing: if video element mounts late (e.g. after fullscreen is entered), assign stream
+      if (video && !video.srcObject && streamRef.current) {
+        console.log('Self-healing: videoRef is now mounted. Assigning stream...');
+        video.muted = true;
+        video.srcObject = streamRef.current;
+        video.play()
+          .then(() => console.log('Self-healing: Video playing successfully.'))
+          .catch(err => console.log(`Self-healing: Play failed: ${err.message || err}`));
+      }
+
+      if (!video || video.readyState < 2) return;
+
+      // If AI models aren't loaded yet, just draw the webcam feed so the user doesn't see a black box
+      if (!modelsLoaded || !faceapi) {
+        if (canvas) {
+          const displaySize = { width: canvasWidth, height: canvasHeight };
+          faceapi.matchDimensions(canvas, displaySize);
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.save();
+            ctx.translate(canvasWidth, 0);
+            ctx.scale(-1, 1);
+            ctx.filter = 'brightness(1.35) contrast(1.25)';
+            ctx.drawImage(video, 0, 0, canvasWidth, canvasHeight);
+            ctx.restore();
+          }
+        }
+        return;
+      }
 
       try {
+        // 1. Run face & phone detections asynchronously on the raw video stream (un-mirrored)
         const detections = await faceapi.detectAllFaces(
-          video,
-          new faceapi.TinyFaceDetectorOptions()
+          video
         ).withFaceLandmarks();
 
+        let phoneCount = 0;
+        let phones: any[] = [];
+        if (cocoSsdModel) {
+          const predictions = await cocoSsdModel.detect(video);
+          phones = predictions.filter((p: any) => p.class === 'cell phone');
+          phoneCount = phones.length;
+        }
+
+        // 2. Draw everything in a single synchronous pass
         if (canvas) {
-          const displaySize = { width: video.clientWidth, height: video.clientHeight };
+          const displaySize = { width: canvasWidth, height: canvasHeight };
           faceapi.matchDimensions(canvas, displaySize);
           const resizedDetections = faceapi.resizeResults(detections, displaySize);
           const ctx = canvas.getContext('2d');
-          ctx?.clearRect(0, 0, canvas.width, canvas.height);
-          faceapi.draw.drawDetections(canvas, resizedDetections);
-          faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
+          
+          if (ctx) {
+            // Draw video and overlays inside the mirrored coordinate system so they match perfectly!
+            ctx.save();
+            ctx.translate(canvasWidth, 0);
+            ctx.scale(-1, 1);
+            
+            // Draw contrast-enhanced video frame
+            ctx.filter = 'brightness(1.35) contrast(1.25)';
+            ctx.drawImage(video, 0, 0, canvasWidth, canvasHeight);
+            ctx.filter = 'none'; // reset filter for boxes
+            
+            // Draw face bounding boxes & landmarks (auto-mirrored by the canvas scale!)
+            faceapi.draw.drawDetections(canvas, resizedDetections);
+            faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
+            
+            // Draw phone bounding boxes (auto-mirrored by the canvas scale!)
+            if (phoneCount > 0) {
+              emit('PHONE_DETECTED', { count: phoneCount, confidence: phones[0].score });
+              
+              ctx.strokeStyle = '#ff0000';
+              ctx.lineWidth = 2;
+              ctx.fillStyle = '#ff0000';
+              ctx.font = '11px monospace';
+              const scaleX = canvasWidth / video.videoWidth;
+              const scaleY = canvasHeight / video.videoHeight;
+              phones.forEach((p: any) => {
+                const [x, y, w, h] = p.bbox;
+                ctx.strokeRect(x * scaleX, y * scaleY, w * scaleX, h * scaleY);
+                ctx.fillText(`Phone (${Math.round(p.score * 100)}%)`, x * scaleX + 4, (y * scaleY) > 15 ? (y * scaleY) - 4 : 15);
+              });
+            }
+            
+            ctx.restore(); // Restore context to draw the HUD text without mirroring!
+
+            // Draw high-tech HUD overlay
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
+            ctx.fillRect(6, 6, 110, 48);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(6, 6, 110, 48);
+
+            ctx.font = 'bold 10px Courier New, monospace';
+            
+            // Draw face count
+            ctx.fillStyle = detections.length === 1 ? '#00ff66' : detections.length > 1 ? '#ffcc00' : '#ff3333';
+            ctx.fillText(`👥 Faces: ${detections.length}`, 12, 22);
+
+            // Draw phone count
+            ctx.fillStyle = phoneCount > 0 ? '#ff3333' : '#a0a0b0';
+            ctx.fillText(`📱 Phones: ${phoneCount}`, 12, 38);
+          }
         }
+
+        // Update states for HTML display
+        setFacesCount(detections.length);
+        setPhonesCount(phoneCount);
 
         const facesDetected = detections.length;
         let isHeadAway = false;
@@ -209,8 +375,10 @@ export function useProctoring({ sessionId, hmacSecret, enabled }: UseProctoringO
         streamRef.current = null;
       }
       if (frameIntervalRef.current) clearInterval(frameIntervalRef.current);
+      window.removeEventListener('click', playOnInteraction);
+      window.removeEventListener('touchstart', playOnInteraction);
     };
-  }, [enabled]);
+  }, [enabled, sessionId, hmacSecret, emit, addLog]);
 
   // --- Browser Event Listeners ---
   useEffect(() => {
@@ -225,7 +393,6 @@ export function useProctoring({ sessionId, hmacSecret, enabled }: UseProctoringO
     }
 
     // Window focus lost (Alt+Tab) — only count if document is still visible
-    // (visibilitychange already handles the hidden case)
     function handleBlur() {
       if (!document.hidden) {
         setTabSwitchCount((c) => c + 1);
@@ -248,6 +415,7 @@ export function useProctoring({ sessionId, hmacSecret, enabled }: UseProctoringO
       emit('COPY_PASTE', { action: 'copy' });
     }
 
+    // Paste interception
     function handlePaste(e: ClipboardEvent) {
       e.preventDefault();
       emit('COPY_PASTE', { action: 'paste', textLength: e.clipboardData?.getData('text')?.length ?? 0 });
@@ -316,5 +484,9 @@ export function useProctoring({ sessionId, hmacSecret, enabled }: UseProctoringO
     tabSwitchCount,
     videoRef,
     canvasRef,
+    debugInfo,
+    logs,
+    facesCount,
+    phonesCount,
   };
 }

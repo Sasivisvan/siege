@@ -13,8 +13,8 @@ export interface RiskWeight {
 }
 
 export const RISK_WEIGHTS: Record<string, RiskWeight> = {
-  TAB_SWITCH:        { perEvent: 15, cap: 45 },
-  COPY_PASTE:        { perEvent: 20, cap: 60 },
+  TAB_SWITCH:        { perEvent: 5, cap: 90 },
+  COPY_PASTE:        { perEvent: 20, cap: 80 },
   FACE_MISSING:      { perEvent: 30, cap: 60 },
   MULTIPLE_FACES:    { perEvent: 50, cap: 100 },
   KEYSTROKE_ANOMALY: { perEvent: 10, cap: 30 },
