@@ -75,3 +75,8 @@ venv/
 .cache/
 .turbo/
 *.pt
+
+# ========================
+# Global Skills Cache
+# ========================
+antigravity_global_skills/

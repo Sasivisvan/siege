@@ -23,6 +23,7 @@ import submissionRoutes from './routes/submission.routes.js';
 import sessionRoutes from './routes/session.routes.js';
 import analyticsRoutes from './routes/analytics.routes.js';
 import classroomRoutes from './routes/classroom.routes.js';
+import profileRoutes from './routes/profile.routes.js';
 
 // Services
 import { startHeartbeatMonitor } from './services/heartbeat.js';
@@ -93,6 +94,7 @@ app.use('/api/submissions', submissionRoutes);
 app.use('/api/sessions', sessionRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/classrooms', classroomRoutes);
+app.use('/api/profile', profileRoutes);
 
 // ============================================
 // 404 Handler (must be after all routes)

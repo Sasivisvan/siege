@@ -7,7 +7,9 @@
 import crypto from 'crypto';
 import { Exam, IExamDocument } from '../models/Exam.js';
 import { Session } from '../models/Session.js';
+import { Submission } from '../models/Submission.js';
 import { AppError } from '../middleware/errorHandler.js';
+import { recalculateSkillProfile } from './skillProfiler.js';
 
 /**
  * Fisher-Yates shuffle for randomizing question order.
@@ -136,9 +138,36 @@ export async function submitExamSession(
     throw new AppError(`Session is already ${session.status}`, 400);
   }
 
+  // 1. Grade the exam submissions (Auto-evaluation for MCQs and Aptitude)
+  const exam = await Exam.findById(session.examId);
+  if (exam) {
+    const submissions = await Submission.find({ sessionId: session._id });
+    for (const question of exam.questions) {
+      const sub = submissions.find(s => s.questionId.toString() === question._id.toString());
+      if (sub) {
+        let score = 0;
+        if (question.type === 'mcq' || question.type === 'aptitude') {
+          score = sub.selectedOption === question.correctOption ? question.points : 0;
+        } else if (question.type === 'coding') {
+          // Default coding auto-grading logic (presence of code)
+          score = sub.code ? question.points : 0;
+        }
+        sub.score = score;
+        await sub.save();
+      }
+    }
+  }
+
   session.status = 'completed';
   session.endedAt = new Date();
   await session.save();
+
+  // 2. Recalculate candidate's skill profile
+  try {
+    await recalculateSkillProfile(candidateId);
+  } catch (error) {
+    console.error(`Failed to calculate skill profile for candidate ${candidateId}:`, error);
+  }
 
   return session;
 }

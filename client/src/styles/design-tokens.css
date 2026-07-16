@@ -1,0 +1,43 @@
+:root {
+  color-scheme: dark;
+
+  /* Typography */
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+
+  /* Palette - Control Room (Deep black, cyan accent, crisp status indicators) */
+  --bg-core: #0a0b0d;
+  --bg-gradient: linear-gradient(135deg, #090a0c 0%, #030405 100%);
+  --panel-solid: #121417;
+  --panel-glass: rgba(18, 20, 23, 0.7);
+  --panel-border: rgba(255, 255, 255, 0.08);
+  --panel-border-hover: rgba(0, 229, 255, 0.3);
+
+  /* Brand and Accent */
+  --accent-rgb: 0, 229, 255;
+  --accent: #00e5ff;
+  --accent-glow: rgba(0, 229, 255, 0.15);
+  --accent-strong: #ffffff;
+  --accent-dim: #00aacc;
+
+  /* Status System */
+  --text: #f3f4f6;
+  --muted: #9ca3af;
+  --success: #10b981;
+  --success-glow: rgba(16, 185, 129, 0.15);
+  --warning: #f59e0b;
+  --warning-glow: rgba(245, 158, 11, 0.15);
+  --danger: #ef4444;
+  --danger-glow: rgba(239, 68, 68, 0.15);
+
+  /* Layout and Geometry */
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.7);
+  --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.9);
+  --glow-ring: 0 0 0 2px rgba(0, 229, 255, 0.25);
+}

@@ -8,6 +8,7 @@
 import stringSimilarity from 'string-similarity';
 import { Submission, ISubmissionDocument } from '../models/Submission.js';
 import { Session } from '../models/Session.js';
+import { detectAICodeProbability } from './aiCodeDetector.js';
 
 // ============================================
 // Layer 0: Code Normalization
@@ -342,11 +343,15 @@ export async function checkPlagiarism(submissionId: string): Promise<void> {
     // Layer 3: Structural comparison (GST)
     const structuralScore = greedyStringTiling(tokens1, tokens2);
 
+    // Layer 4: Heuristic AI generated code detection (0.0 to 1.0)
+    const aiProb = detectAICodeProbability(submission.code);
+
     // Weighted final score
     const finalScore =
-      quickScore * 0.20 +
-      fingerprintScore * 0.35 +
-      structuralScore * 0.45;
+      quickScore * 0.15 +
+      fingerprintScore * 0.30 +
+      structuralScore * 0.40 +
+      aiProb * 0.15;
 
     maxScore = Math.max(maxScore, finalScore);
 

@@ -92,19 +92,6 @@ export function ExamWorkspace({ examId }: ExamWorkspaceProps) {
     startSession();
   }, [isAuthenticated, examId]);
 
-  // --- Countdown Timer ---
-  useEffect(() => {
-    if (status !== 'active' || timeLeft === null) return;
-
-    if (timeLeft <= 0) {
-      handleSubmit();
-      return;
-    }
-
-    const timer = setTimeout(() => setTimeLeft((t) => (t !== null ? t - 1 : null)), 1000);
-    return () => clearTimeout(timer);
-  }, [status, timeLeft, handleSubmit]);
-
   // --- Auto-save Answer ---
   const saveAnswer = useCallback(async (questionId: string, value: string | number) => {
     if (!sessionId) return;
@@ -140,6 +127,19 @@ export function ExamWorkspace({ examId }: ExamWorkspaceProps) {
       console.error('[ExamWorkspace] Submit failed:', err);
     }
   }, [sessionId, exam]);
+
+  // --- Countdown Timer ---
+  useEffect(() => {
+    if (status !== 'active' || timeLeft === null) return;
+
+    if (timeLeft <= 0) {
+      handleSubmit();
+      return;
+    }
+
+    const timer = setTimeout(() => setTimeLeft((t) => (t !== null ? t - 1 : null)), 1000);
+    return () => clearTimeout(timer);
+  }, [status, timeLeft, handleSubmit]);
 
   // --- Format Timer ---
   function formatTime(s: number): string {

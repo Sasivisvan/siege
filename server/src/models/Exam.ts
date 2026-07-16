@@ -26,6 +26,8 @@ const questionSchema = new Schema(
     },
     title: { type: String, required: true, trim: true },
     description: { type: String, required: true },
+    topic: { type: String, trim: true, default: 'General' },
+    difficulty: { type: String, enum: ['easy', 'medium', 'hard'], default: 'medium' },
     options: [{ type: String }],          // For MCQ/aptitude
     correctOption: { type: Number },       // Index of correct option
     testCases: [testCaseSchema],           // For coding
@@ -59,6 +61,8 @@ export interface IExamDocument extends Document {
     type: string;
     title: string;
     description: string;
+    topic?: string;
+    difficulty?: 'easy' | 'medium' | 'hard';
     options?: string[];
     correctOption?: number;
     testCases?: Array<{

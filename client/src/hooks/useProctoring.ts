@@ -9,6 +9,7 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { enqueueTelemetry, flushTelemetry, sendHeartbeat } from '@/lib/telemetry';
+import { useKeystrokeAnalytics } from '@/hooks/useKeystrokeAnalytics';
 
 const TELEMETRY_FLUSH_INTERVAL = 10_000;  // 10 seconds
 const HEARTBEAT_INTERVAL = 30_000;         // 30 seconds
@@ -83,6 +84,12 @@ export function useProctoring({ sessionId, hmacSecret, enabled }: UseProctoringO
       metadata,
     });
   }, []);
+
+  // --- Keystroke Analytics Hook ---
+  useKeystrokeAnalytics({
+    enabled,
+    onAnomaly: emit
+  });
 
   // --- Webcam Setup ---
   useEffect(() => {
