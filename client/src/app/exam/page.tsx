@@ -1,10 +1,11 @@
 "use client";
 
+import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { AppShell } from '@/components/ui/app-shell';
 import { ExamWorkspace } from '@/components/exam/exam-workspace';
 
-export default function ExamPage() {
+function ExamContent() {
   const searchParams = useSearchParams();
   const examId = searchParams.get('id');
 
@@ -20,4 +21,12 @@ export default function ExamPage() {
   }
 
   return <ExamWorkspace examId={examId} />;
+}
+
+export default function ExamPage() {
+  return (
+    <Suspense fallback={null}>
+      <ExamContent />
+    </Suspense>
+  );
 }
