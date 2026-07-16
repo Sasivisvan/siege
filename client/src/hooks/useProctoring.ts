@@ -107,21 +107,29 @@ export function useProctoring({ sessionId, hmacSecret, enabled }: UseProctoringO
 
     async function startWebcam() {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
-        });
+        let stream: MediaStream;
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+          });
+        } catch (initialErr) {
+          console.warn('[Proctoring] Ideal camera constraints failed, trying basic video...', initialErr);
+          stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        }
+        
         if (cancelled) {
           stream.getTracks().forEach((t) => t.stop());
           return;
         }
         streamRef.current = stream;
         if (videoRef.current) {
+          videoRef.current.muted = true;
           videoRef.current.srcObject = stream;
           videoRef.current.play().catch(err => console.warn('[Proctoring] Video play failed', err));
         }
         setWebcamReady(true);
       } catch (err) {
-        console.warn('[Proctoring] Webcam access denied:', err);
+        console.warn('[Proctoring] Webcam access completely denied:', err);
         setWebcamReady(false);
       }
     }

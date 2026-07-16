@@ -335,6 +335,10 @@ export function ExamWorkspace({ examId }: ExamWorkspaceProps) {
                 autoPlay 
                 playsInline 
                 muted 
+                onLoadedMetadata={(e) => {
+                  e.currentTarget.muted = true;
+                  e.currentTarget.play().catch(console.warn);
+                }}
                 style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} 
               />
               <canvas 
