@@ -38,6 +38,7 @@ interface ProctoringState {
   isLocked: boolean;
   tabSwitchCount: number;
   videoRef: React.RefObject<HTMLVideoElement | null>;
+  canvasRef: React.RefObject<HTMLCanvasElement | null>;
 }
 
 interface UseProctoringOptions {
@@ -64,6 +65,7 @@ export function useProctoring({ sessionId, hmacSecret, enabled }: UseProctoringO
   const [tabSwitchCount, setTabSwitchCount] = useState(0);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const frameIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const flushTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -114,6 +116,7 @@ export function useProctoring({ sessionId, hmacSecret, enabled }: UseProctoringO
     // Frame capture loop (runs every 1 second)
     frameIntervalRef.current = setInterval(async () => {
       const video = videoRef.current;
+      const canvas = canvasRef.current;
       if (!video || video.readyState < 2 || !modelsLoaded || !faceapi) return;
 
       try {
@@ -121,6 +124,16 @@ export function useProctoring({ sessionId, hmacSecret, enabled }: UseProctoringO
           video,
           new faceapi.TinyFaceDetectorOptions()
         ).withFaceLandmarks();
+
+        if (canvas) {
+          const displaySize = { width: video.clientWidth, height: video.clientHeight };
+          faceapi.matchDimensions(canvas, displaySize);
+          const resizedDetections = faceapi.resizeResults(detections, displaySize);
+          const ctx = canvas.getContext('2d');
+          ctx?.clearRect(0, 0, canvas.width, canvas.height);
+          faceapi.draw.drawDetections(canvas, resizedDetections);
+          faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
+        }
 
         const facesDetected = detections.length;
         let isHeadAway = false;
@@ -278,5 +291,6 @@ export function useProctoring({ sessionId, hmacSecret, enabled }: UseProctoringO
     isLocked,
     tabSwitchCount,
     videoRef,
+    canvasRef,
   };
 }

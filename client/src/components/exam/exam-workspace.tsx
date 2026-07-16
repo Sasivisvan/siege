@@ -316,6 +316,10 @@ export function ExamWorkspace({ examId }: ExamWorkspaceProps) {
                 muted 
                 style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} 
               />
+              <canvas 
+                ref={proctoring.canvasRef}
+                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', transform: 'scaleX(-1)' }}
+              />
             </div>
             <p>Fullscreen: {proctoring.isFullscreen ? '✅ active' : '⚠️ inactive'}</p>
             <p>Tab switches: {proctoring.tabSwitchCount}</p>
