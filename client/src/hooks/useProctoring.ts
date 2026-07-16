@@ -198,66 +198,98 @@ export function useProctoring({ sessionId, hmacSecret, enabled }: UseProctoringO
 
       // Self-healing: if video element mounts late (e.g. after fullscreen is entered), assign stream
       if (video && !video.srcObject && streamRef.current) {
-        addLog('Self-healing: videoRef is now mounted. Assigning stream...');
+        console.log('Self-healing: videoRef is now mounted. Assigning stream...');
         video.muted = true;
         video.srcObject = streamRef.current;
         video.play()
-          .then(() => addLog('Self-healing: Video playing successfully.'))
-          .catch(err => addLog(`Self-healing: Play failed: ${err.message || err}`));
+          .then(() => console.log('Self-healing: Video playing successfully.'))
+          .catch(err => console.log(`Self-healing: Play failed: ${err.message || err}`));
       }
 
       if (!video || video.readyState < 2) return;
 
-      // Draw the video frame as a snapshot to the canvas first
-      if (canvas) {
-        if (canvas.width !== canvasWidth || canvas.height !== canvasHeight) {
-          canvas.width = canvasWidth;
-          canvas.height = canvasHeight;
+      // If AI models aren't loaded yet, just draw the webcam feed so the user doesn't see a black box
+      if (!modelsLoaded || !faceapi) {
+        if (canvas) {
+          if (canvas.width !== canvasWidth || canvas.height !== canvasHeight) {
+            canvas.width = canvasWidth;
+            canvas.height = canvasHeight;
+          }
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+            ctx.drawImage(video, 0, 0, canvasWidth, canvasHeight);
+          }
         }
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.clearRect(0, 0, canvasWidth, canvasHeight);
-          ctx.drawImage(video, 0, 0, canvasWidth, canvasHeight);
-        }
+        return;
       }
 
-      if (!modelsLoaded || !faceapi) return;
-
       try {
+        // 1. Run AI detections asynchronously first
         const detections = await faceapi.detectAllFaces(
           video,
           new faceapi.TinyFaceDetectorOptions()
         ).withFaceLandmarks();
 
+        let phoneCount = 0;
+        let phones: any[] = [];
+        if (cocoSsdModel) {
+          const predictions = await cocoSsdModel.detect(video);
+          phones = predictions.filter((p: any) => p.class === 'cell phone');
+          phoneCount = phones.length;
+        }
+
+        // 2. Draw everything in a single synchronous pass to prevent flickering!
         if (canvas) {
-          const displaySize = { width: canvasWidth, height: canvasHeight };
-          faceapi.matchDimensions(canvas, displaySize);
-          const resizedDetections = faceapi.resizeResults(detections, displaySize);
+          if (canvas.width !== canvasWidth || canvas.height !== canvasHeight) {
+            canvas.width = canvasWidth;
+            canvas.height = canvasHeight;
+          }
           const ctx = canvas.getContext('2d');
           if (ctx) {
-            // Overlays drawn on top of the already drawn video frame
+            // Draw webcam frame
+            ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+            ctx.drawImage(video, 0, 0, canvasWidth, canvasHeight);
+
+            // Draw Face API overlays
+            const displaySize = { width: canvasWidth, height: canvasHeight };
+            faceapi.matchDimensions(canvas, displaySize);
+            const resizedDetections = faceapi.resizeResults(detections, displaySize);
             faceapi.draw.drawDetections(canvas, resizedDetections);
             faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
             
-            if (cocoSsdModel) {
-              const predictions = await cocoSsdModel.detect(video);
-              const phones = predictions.filter((p: any) => p.class === 'cell phone');
-              if (phones.length > 0) {
-                emit('PHONE_DETECTED', { count: phones.length, confidence: phones[0].score });
-                
-                ctx.strokeStyle = '#ff0000';
-                ctx.lineWidth = 4;
-                ctx.fillStyle = '#ff0000';
-                ctx.font = '16px Arial';
-                const scaleX = canvas.width / video.videoWidth;
-                const scaleY = canvas.height / video.videoHeight;
-                phones.forEach((p: any) => {
-                  const [x, y, w, h] = p.bbox;
-                  ctx.strokeRect(x * scaleX, y * scaleY, w * scaleX, h * scaleY);
-                  ctx.fillText(`Phone (${Math.round(p.score * 100)}%)`, x * scaleX, (y * scaleY) > 20 ? (y * scaleY) - 5 : 20);
-                });
-              }
+            if (phoneCount > 0) {
+              emit('PHONE_DETECTED', { count: phoneCount, confidence: phones[0].score });
+              
+              ctx.strokeStyle = '#ff0000';
+              ctx.lineWidth = 2;
+              ctx.fillStyle = '#ff0000';
+              ctx.font = '11px monospace';
+              const scaleX = canvas.width / video.videoWidth;
+              const scaleY = canvas.height / video.videoHeight;
+              phones.forEach((p: any) => {
+                const [x, y, w, h] = p.bbox;
+                ctx.strokeRect(x * scaleX, y * scaleY, w * scaleX, h * scaleY);
+                ctx.fillText(`Phone (${Math.round(p.score * 100)}%)`, x * scaleX + 4, (y * scaleY) > 15 ? (y * scaleY) - 4 : 15);
+              });
             }
+
+            // Draw high-tech HUD overlay
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
+            ctx.fillRect(6, 6, 110, 48);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(6, 6, 110, 48);
+
+            ctx.font = 'bold 10px Courier New, monospace';
+            
+            // Draw face count (green for 1, yellow for >1, red for 0)
+            ctx.fillStyle = detections.length === 1 ? '#00ff66' : detections.length > 1 ? '#ffcc00' : '#ff3333';
+            ctx.fillText(`👥 Faces: ${detections.length}`, 12, 22);
+
+            // Draw phone count (red warning if >0)
+            ctx.fillStyle = phoneCount > 0 ? '#ff3333' : '#a0a0b0';
+            ctx.fillText(`📱 Phones: ${phoneCount}`, 12, 38);
           }
         }
 

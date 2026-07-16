@@ -324,7 +324,7 @@ export function ExamWorkspace({ examId }: ExamWorkspaceProps) {
 
           <article className="card">
             <h3>Session Monitor</h3>
-            <div style={{ marginBottom: 12, borderRadius: 8, overflow: 'hidden', background: '#000', height: 120, position: 'relative' }}>
+            <div style={{ marginBottom: 12, borderRadius: 8, overflow: 'hidden', background: '#000', width: '100%', aspectRatio: '4/3', position: 'relative' }}>
               {!proctoring.webcamReady && (
                 <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
                   ⏳ Loading camera...
