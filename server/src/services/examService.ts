@@ -53,13 +53,27 @@ export async function startExamSession(
     // Generate per-session HMAC secret
     const hmacSecret = crypto.randomBytes(32).toString('hex');
 
-    // Create session
-    session = await Session.create({
-      examId,
-      candidateId,
-      hmacSecret,
-      lastHeartbeat: new Date(),
-    });
+    try {
+      // Create session
+      session = await Session.create({
+        examId,
+        candidateId,
+        hmacSecret,
+        lastHeartbeat: new Date(),
+      });
+    } catch (error: any) {
+      if (error.code === 11000) {
+        // Race condition: another request created the session a millisecond ago!
+        // Fallback to retrieving it.
+        session = await Session.findOne({ examId, candidateId }).select('+hmacSecret');
+        if (!session) throw error; // Should never happen
+        if (session.status !== 'active') {
+          throw new AppError(`You cannot start this exam because your session is ${session.status}`, 409);
+        }
+      } else {
+        throw error; // Rethrow other errors
+      }
+    }
   }
 
   // Prepare exam data for the candidate

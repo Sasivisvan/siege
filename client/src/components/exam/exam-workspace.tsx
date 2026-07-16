@@ -4,7 +4,7 @@
 
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { RiskMeter } from '@/components/proctoring/risk-meter';
 import { useProctoring } from '@/hooks/useProctoring';
 import { useAuth } from '@/lib/auth-context';
@@ -58,9 +58,14 @@ export function ExamWorkspace({ examId }: ExamWorkspaceProps) {
     enabled: status === 'active',
   });
 
+  // Use a ref to prevent React 18 Strict Mode from double-firing the effect
+  const hasStarted = useRef(false);
+
   // --- Start Exam Session ---
   useEffect(() => {
     if (!isAuthenticated || !examId) return;
+    if (hasStarted.current) return;
+    hasStarted.current = true;
 
     async function startSession() {
       try {
@@ -136,13 +141,6 @@ export function ExamWorkspace({ examId }: ExamWorkspaceProps) {
     }
   }
 
-  // --- Request Fullscreen ---
-  useEffect(() => {
-    if (status === 'active' && exam?.settings.fullscreenRequired) {
-      document.documentElement.requestFullscreen?.().catch(() => {});
-    }
-  }, [status, exam]);
-
   // --- Format Timer ---
   function formatTime(s: number): string {
     const m = Math.floor(s / 60);
@@ -172,11 +170,44 @@ export function ExamWorkspace({ examId }: ExamWorkspaceProps) {
 
   if (!exam) return null;
 
+  if (proctoring.isLocked) {
+    return (
+      <section className="card stack" style={{ textAlign: 'center', color: '#ef4444', marginTop: 40 }}>
+        <h2>🔒 Session Locked</h2>
+        <p>Your session has been locked due to suspicious activity (e.g. disconnected heartbeat or leaving the page).</p>
+        <p>Please contact your instructor.</p>
+        <a href="/dashboard" className="button">Return to Dashboard</a>
+      </section>
+    );
+  }
+
+  if (exam.settings.fullscreenRequired && !proctoring.isFullscreen) {
+    return (
+      <section className="card stack" style={{ textAlign: 'center', marginTop: 40 }}>
+        <h2>⚠️ Fullscreen Required</h2>
+        <p>This exam requires you to be in fullscreen mode. Exiting fullscreen will pause your exam.</p>
+        <button 
+          className="button primary" 
+          onClick={() => document.documentElement.requestFullscreen?.().catch(console.error)}
+          style={{ alignSelf: 'center' }}
+        >
+          Enter Fullscreen to Continue
+        </button>
+      </section>
+    );
+  }
+
   const question = exam.questions[currentQ];
   const questionId = question.id;
 
   return (
     <section className="workspace">
+      {proctoring.tabSwitchCount > 0 && (
+        <div style={{ background: '#ef4444', color: 'white', padding: '12px 16px', borderRadius: 8, marginBottom: 16, fontWeight: 'bold' }}>
+          ⚠️ Warning: You have switched tabs {proctoring.tabSwitchCount} time(s). Continuing to leave the exam window will result in your session being locked.
+        </div>
+      )}
+
       {/* Timer Bar */}
       <div className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h3>{exam.title}</h3>
