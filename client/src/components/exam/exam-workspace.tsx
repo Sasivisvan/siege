@@ -348,6 +348,26 @@ export function ExamWorkspace({ examId }: ExamWorkspaceProps) {
               />
             </div>
             <p style={{ fontSize: '0.8rem', color: 'var(--muted)', margin: '4px 0' }}>Status: {proctoring.debugInfo}</p>
+            <div style={{
+              background: '#0a0a0c',
+              border: '1px solid #222',
+              borderRadius: 6,
+              padding: '6px 10px',
+              fontFamily: 'monospace',
+              fontSize: '0.75rem',
+              color: '#39ff14',
+              height: 100,
+              overflowY: 'auto',
+              marginTop: 10,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 4
+            }}>
+              <span style={{ color: '#888', borderBottom: '1px solid #222', paddingBottom: 2, marginBottom: 2 }}>🔧 Live Diagnostic Logs</span>
+              {proctoring.logs.map((log, idx) => (
+                <div key={idx} style={{ wordBreak: 'break-all' }}>{log}</div>
+              ))}
+            </div>
             <p>Fullscreen: {proctoring.isFullscreen ? '✅ active' : '⚠️ inactive'}</p>
             <p>Tab switches: {proctoring.tabSwitchCount}</p>
             {proctoring.isLocked && (

@@ -49,6 +49,7 @@ interface ProctoringState {
   videoRef: React.RefObject<HTMLVideoElement | null>;
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
   debugInfo: string;
+  logs: string[];
 }
 
 interface UseProctoringOptions {
@@ -74,6 +75,12 @@ export function useProctoring({ sessionId, hmacSecret, enabled }: UseProctoringO
   const [isLocked, setIsLocked] = useState(false);
   const [tabSwitchCount, setTabSwitchCount] = useState(0);
   const [debugInfo, setDebugInfo] = useState('Initializing proctoring...');
+  const [logs, setLogs] = useState<string[]>([]);
+
+  const addLog = useCallback((msg: string) => {
+    console.log(`[Proctoring] ${msg}`);
+    setLogs((prev) => [...prev, `${new Date().toLocaleTimeString()}: ${msg}`].slice(-8));
+  }, []);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -109,39 +116,51 @@ export function useProctoring({ sessionId, hmacSecret, enabled }: UseProctoringO
 
     async function startWebcam() {
       try {
+        addLog('Requesting camera permissions...');
         setDebugInfo('Requesting camera permissions...');
         let stream: MediaStream;
         try {
           stream = await navigator.mediaDevices.getUserMedia({
             video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
           });
-        } catch (initialErr) {
+          addLog('Webcam stream obtained with ideal constraints.');
+        } catch (initialErr: any) {
           console.warn('[Proctoring] Ideal camera constraints failed, trying basic video...', initialErr);
+          addLog(`Ideal camera failed (${initialErr.message || initialErr}). Trying basic video...`);
           setDebugInfo('Ideal camera failed, trying basic video...');
           stream = await navigator.mediaDevices.getUserMedia({ video: true });
+          addLog('Webcam stream obtained with basic constraints.');
         }
         
         if (cancelled) {
+          addLog('Webcam stream cancelled during setup.');
           stream.getTracks().forEach((t) => t.stop());
           return;
         }
         streamRef.current = stream;
         if (videoRef.current) {
+          addLog('Assigning stream to video.srcObject...');
           setDebugInfo('Setting video source...');
           videoRef.current.muted = true;
           videoRef.current.srcObject = stream;
           videoRef.current.play()
-            .then(() => setDebugInfo('Webcam active & playing.'))
+            .then(() => {
+              addLog('Video element playing successfully.');
+              setDebugInfo('Webcam active & playing.');
+            })
             .catch(err => {
               console.warn('[Proctoring] Video play failed', err);
+              addLog(`Play blocked: ${err.message || err}`);
               setDebugInfo(`Play blocked: ${err.message || err}. Click page to start.`);
             });
         } else {
+          addLog('Warning: videoRef.current is NULL.');
           setDebugInfo('Video ref not ready yet.');
         }
         setWebcamReady(true);
       } catch (err: any) {
         console.warn('[Proctoring] Webcam access completely denied:', err);
+        addLog(`Webcam error: ${err.message || err}`);
         setDebugInfo(`Webcam error: ${err.message || err}`);
         setWebcamReady(false);
       }
@@ -150,22 +169,30 @@ export function useProctoring({ sessionId, hmacSecret, enabled }: UseProctoringO
     // Attempt to play video on any user interaction to bypass autoplay restrictions (e.g. Safari Low Power Mode)
     function playOnInteraction() {
       if (videoRef.current && videoRef.current.paused) {
+        addLog('User clicked page. Attempting fallback play()...');
         videoRef.current.play()
           .then(() => {
+            addLog('Play succeeded via user interaction.');
             setDebugInfo('Webcam active (via interaction)');
             window.removeEventListener('click', playOnInteraction);
             window.removeEventListener('touchstart', playOnInteraction);
           })
-          .catch(err => console.warn('[Proctoring] Interaction play failed', err));
+          .catch(err => {
+            addLog(`Interaction play failed: ${err.message || err}`);
+            console.warn('[Proctoring] Interaction play failed', err);
+          });
       }
     }
     window.addEventListener('click', playOnInteraction);
     window.addEventListener('touchstart', playOnInteraction);
 
+    addLog(`Hook activated (sessionId: ${sessionId ? 'provided' : 'none'})`);
     startWebcam();
     setDebugInfo('Loading AI models...');
+    addLog('Importing AI models...');
     loadModels().then(() => {
       setDebugInfo('AI Models loaded. Monitoring...');
+      addLog('AI Models loaded. Starting monitoring loop.');
     });
 
     // Frame capture loop (runs every 1 second)
@@ -372,5 +399,6 @@ export function useProctoring({ sessionId, hmacSecret, enabled }: UseProctoringO
     videoRef,
     canvasRef,
     debugInfo,
+    logs,
   };
 }
